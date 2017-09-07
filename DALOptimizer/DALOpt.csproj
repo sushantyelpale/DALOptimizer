@@ -83,6 +83,7 @@
     <Reference Include="System.Data.DataSetExtensions">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="System.Xml.Linq">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
@@ -92,8 +93,8 @@
     <Compile Include="AllPatterns.cs" />
     <Compile Include="CSharpFile.cs" />
     <Compile Include="CSharpProject.cs" />
-    <Compile Include="FindRedundantTypeInLocalVariableDeclaration.cs" />
     <Compile Include="MatchExpr.cs" />
+    <Compile Include="MatchInvocation.cs" />
     <Compile Include="PrintFunction.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

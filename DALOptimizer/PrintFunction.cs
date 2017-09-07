@@ -1,15 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 using ICSharpCode.NRefactory.CSharp;
-using ICSharpCode.NRefactory.CSharp.Refactoring;
-using ICSharpCode.NRefactory.CSharp.Resolver;
-using ICSharpCode.NRefactory.Editor;
-using ICSharpCode.NRefactory.PatternMatching;
-using ICSharpCode.NRefactory.Semantics;
-using ICSharpCode.NRefactory.TypeSystem;
 
 namespace DALOptimizer
 {
@@ -17,9 +9,7 @@ namespace DALOptimizer
     {
         public void PrintMethod(Solution solution)
         {
-            Console.WriteLine("Found {0} places to refactor Invocation Expression in {1} files.",
-                  solution.AllFiles.Sum(f => f.IndexOfInvocations.Count),
-                  solution.AllFiles.Count(f => f.IndexOfInvocations.Count > 0));
+
             Console.WriteLine("Found {0} places to refactor Field Declaration in {1} files.",
                   solution.AllFiles.Sum(f => f.IndexOfFieldDecl.Count),
                   solution.AllFiles.Count(f => f.IndexOfFieldDecl.Count > 0));
