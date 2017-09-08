@@ -14,6 +14,16 @@ namespace DALOptimizer
 {
     class MatchInvocation
     {
+        public const string EXPRESSIONSTATEMENT = "ExpressionStatement";
+        public const string CATCHCLAUSE = "CatchClause";
+        public const string FIELDDECLARATION = "FieldDeclaration";
+        public const string VARIABLEDECLSTMT = "VariableDeclarationStatement";
+        public const string ASSIGNMENTEXPRESSION = "AssignmentExpression";
+        public const string PROPERTYDECLARATION = "PropertyDeclaration";
+        public const string BLOCKSTATEMENT = "BlockStatement";
+        public const string METHODDECLARARION = "MethodDeclaration";
+        public const string TYPEDECLARATION = "TypeDeclaration";
+
         AllPatterns Pat = new AllPatterns();
 
         public void CheckAllInvocation(CSharpFile file, CSharpAstResolver astResolver) 
@@ -21,52 +31,52 @@ namespace DALOptimizer
             foreach (var invocation in file.syntaxTree.Descendants.OfType<AstNode>())
             {
                 //track all expression Statemens
-                if (invocation.GetType().Name == "ExpressionStatement")
+                if (invocation.GetType().Name == EXPRESSIONSTATEMENT)
                 {
                     MatchExprStmt(invocation, file, astResolver);
                     continue;
                 }
                 //catch clause
-                if (invocation.GetType().Name == "CatchClause")
+                if (invocation.GetType().Name == CATCHCLAUSE)
                 {
                     MatchCatchClause(invocation, file, astResolver);
                     continue;
                 }
 
                 // For All Global Field Declarations
-                if (invocation.GetType().Name == "FieldDeclaration")
+                if (invocation.GetType().Name == FIELDDECLARATION)
                 {
                     MatchFieldDecl(invocation, file, astResolver);
                     continue;
                 }
                 // For variable Decaration of type {SqlCommand cmd = new SqlCommand ("dbo.InboxDeviceReport", con);}
-                if (invocation.GetType().Name == "VariableDeclarationStatement")
+                if (invocation.GetType().Name == VARIABLEDECLSTMT)
                 {
                     MatchVarDeclStmt(invocation, file, astResolver);
                     continue;
                 }
 
-                if (invocation.GetType().Name == "AssignmentExpression")
+                if (invocation.GetType().Name == ASSIGNMENTEXPRESSION)
                 {
                     MatchAssExpr(invocation, file, astResolver);
                     continue;
                 }
 
                 //check Global Property Declaration
-                if (invocation.GetType().Name == "PropertyDeclaration")
+                if (invocation.GetType().Name == PROPERTYDECLARATION)
                 {
                     MatchPropDecl(invocation, file, astResolver);
                     continue;
                 }
 
                 //check Finally Block
-                if (invocation.GetType().Name == "BlockStatement")
+                if (invocation.GetType().Name == BLOCKSTATEMENT)
                 {
                     MatchBlock(invocation, file, astResolver);
                     continue;
                 }
 
-                if (invocation.GetType().Name == "MethodDeclaration")
+                if (invocation.GetType().Name == METHODDECLARARION)
                 {
                     MatchMethodDecl(invocation, file, astResolver);
                     continue;
@@ -77,14 +87,14 @@ namespace DALOptimizer
         // For All Global field Declarations eg. PrintFunction PrFun = new PrintFunction();
         public void MatchFieldDecl(AstNode invocation, CSharpFile file, CSharpAstResolver astResolver)
         {
-            if (invocation.Parent.GetType().Name.ToString() == "TypeDeclaration")
+            if (invocation.Parent.GetType().Name.ToString() == TYPEDECLARATION)
                 file.IndexOfFieldDecl.Add((FieldDeclaration)invocation);
         }
 
         // For All Global Property Declarations
         public void MatchPropDecl(AstNode invocation, CSharpFile file, CSharpAstResolver astResolver)
         {
-            if (invocation.Parent.GetType().Name.ToString() == "TypeDeclaration")
+            if (invocation.Parent.GetType().Name.ToString() == TYPEDECLARATION)
                 file.IndexOfPropDecl.Add((PropertyDeclaration)invocation);
         }
 
@@ -110,7 +120,7 @@ namespace DALOptimizer
                 file.IndexOfVarDeclStmt.Add((VariableDeclarationStatement)invocation);
             else if (varDeclMthd.Success)
             {
-                if (invocation.Parent.GetType().Name == "BlockStatement" && invocation.Parent.Parent.GetType().Name == "MethodDeclaration")
+                if (invocation.Parent.GetType().Name == BLOCKSTATEMENT && invocation.Parent.Parent.GetType().Name == METHODDECLARARION)
                 {
                     file.IndexOfVarDeclStmt.Add((VariableDeclarationStatement)invocation);
                 }

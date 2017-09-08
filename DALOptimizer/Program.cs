@@ -57,7 +57,9 @@ namespace DALOptimizer
                         continue;
 
                     var document = matchExpr.CheckAllExpressions(file);
-                    File.WriteAllText(Path.ChangeExtension(file.FileName, ".output.cs"), document.Text);
+                    //File.WriteAllText(Path.ChangeExtension(file.FileName, ".output.cs"), document.Text);
+                    Path.GetDirectoryName(Application.ExecutablePath);
+                    File.WriteAllText(Path.ChangeExtension(file.FileName, ".cs"), document.Text);
                 }
             }
             Console.ReadKey();

@@ -28,207 +28,238 @@ namespace DALOptimizer
 
             using (var script = new DocumentScript(document, formattingOptions, options))
             {
-                // for global declarations
-                foreach (FieldDeclaration expr in file.IndexOfFieldDecl)
-                {
-                    var copy = (FieldDeclaration)expr.Clone();
+                GlobalFieldDeclaraton(script, file);
+                GlobalPropertyDeclaraton(script, file);
+                BlockStat(script, file);
+                CatchClaus(script,file);
+                AssignmentExpr(script, file);
+                VarDeclarationStmt(script, file);
+                ExprStatement(script, file);
+                MethodDecl(script, file);
+            }
+            
+            return document;
+        }
 
-                    AllPatterns pat = new AllPatterns();
-                    var pattern = pat.ConnectionClassconnectExpr();
+        private void GlobalFieldDeclaraton(DocumentScript script, CSharpFile file)
+        {
+            // for global declarations
+            foreach (FieldDeclaration expr in file.IndexOfFieldDecl)
+            {
+                var copy = (FieldDeclaration)expr.Clone();
 
-                    if (expr.GetText().Contains(pattern.GetText()))   // Replace ConnectionClass.connect() with DatabaseProcessing stmt
-                        script.Replace(expr, pat.DbProcessing());
-                    else                                                // rest of all global declarations are removed
-                        script.Remove(expr, true);
-                }
+                AllPatterns pat = new AllPatterns();
+                var pattern = pat.ConnectionClassconnectExpr();
 
-                // for global property declarations
-                foreach (PropertyDeclaration expr in file.IndexOfPropDecl)
-                {
-                    var copy = (PropertyDeclaration)expr.Clone();
-                    AllPatterns pat = new AllPatterns();
-                    var pattern = pat.ConnectionClassconnectExpr();
+                if (expr.GetText().Contains(pattern.GetText()))   // Replace ConnectionClass.connect() with DatabaseProcessing stmt
+                    script.Replace(expr, pat.DbProcessing());
+                else                                                // rest of all global declarations are removed
                     script.Remove(expr, true);
-                }
+            }
 
-                foreach (var expr in file.IndexOfBlockStmt)
+        }
+
+        private void GlobalPropertyDeclaraton(DocumentScript script, CSharpFile file)
+        {
+            // for global property declarations
+            foreach (PropertyDeclaration expr in file.IndexOfPropDecl)
+            {
+                var copy = (PropertyDeclaration)expr.Clone();
+                AllPatterns pat = new AllPatterns();
+                var pattern = pat.ConnectionClassconnectExpr();
+                script.Remove(expr, true);
+            }
+        }
+        private void BlockStat(DocumentScript script, CSharpFile file)
+        {
+            foreach (var expr in file.IndexOfBlockStmt)
+            {
+                var copy = (BlockStatement)expr.Clone();
+                AllPatterns Pat = new AllPatterns();
+                script.Replace(expr, Pat.FinalyBlck());
+            }
+        }
+        private void CatchClaus(DocumentScript script, CSharpFile file) 
+        {
+            foreach (var expr in file.IndexOfCtchClause)
+            {
+                var copy = (CatchClause)expr.Clone();
+                AllPatterns Pat = new AllPatterns();
+                script.Replace(expr, Pat.ctchclause());
+            }
+        }
+
+        private void AssignmentExpr(DocumentScript script, CSharpFile file)
+        {
+            foreach (var expr in file.IndexOfAssExpr)
+            {
+                var copy = (AssignmentExpression)expr.Clone();
+
+                AllPatterns Pat = new AllPatterns();
+                var expr3 = Pat.sqlCmdstmt();
+                var expr4 = Pat.sqlCmdstmt1();
+                ICSharpCode.NRefactory.PatternMatching.Match sqlCmdstmt = expr3.Match(expr);
+                ICSharpCode.NRefactory.PatternMatching.Match sqlCmdstmt1 = expr4.Match(expr);
+
+                if (sqlCmdstmt.Success)
                 {
-                    var copy = (BlockStatement)expr.Clone();
-                    AllPatterns Pat = new AllPatterns();
-                    script.Replace(expr, Pat.FinalyBlck());
+                    // Removing Conn Object from SP statement
+                    int start = script.GetCurrentOffset(expr.LastChild.LastChild.PrevSibling.PrevSibling.StartLocation);
+                    int end = script.GetCurrentOffset(expr.LastChild.LastChild.PrevSibling.EndLocation);
+                    script.RemoveText(start, end - start);
+
+                    //inserting "dbo." in SP variable
+                    var SPName = expr.LastChild.FirstChild.NextSibling.NextSibling.NextSibling;
+                    int curOffset = script.GetCurrentOffset(SPName.StartLocation);
+                    if (!SPName.GetText().Contains("dbo.") && !SPName.GetText().Contains(" "))
+                        script.InsertText(curOffset + 1, "dbo.");
                 }
-
-                foreach (var expr in file.IndexOfCtchClause)
+                if (sqlCmdstmt1.Success)
                 {
-                    var copy = (CatchClause)expr.Clone();
-                    AllPatterns Pat = new AllPatterns();
-                    script.Replace(expr, Pat.ctchclause());
+                    // inserting SqlCommand before first declaration for stored procedure in method
+                    int start = script.GetCurrentOffset(expr.StartLocation);
+                    script.InsertText(start, "SqlCommand ");
                 }
+            }
 
-                foreach (var expr in file.IndexOfAssExpr)
+        }
+        private void VarDeclarationStmt(DocumentScript script, CSharpFile file)
+        {
+            foreach (var expr in file.IndexOfVarDeclStmt)
+            {
+                var copy = (VariableDeclarationStatement)expr.Clone();
+
+                AllPatterns Pat = new AllPatterns();
+                if (Pat.sqlCmdstmt2().Match(expr).Success)
                 {
-                    var copy = (AssignmentExpression)expr.Clone();
-
-                    AllPatterns Pat = new AllPatterns();
-                    var expr3 = Pat.sqlCmdstmt();
-                    var expr4 = Pat.sqlCmdstmt1();
-                    ICSharpCode.NRefactory.PatternMatching.Match sqlCmdstmt = expr3.Match(expr);
-                    ICSharpCode.NRefactory.PatternMatching.Match sqlCmdstmt1 = expr4.Match(expr);
-
-                    if (sqlCmdstmt.Success)
-                    {
-                        // Removing Conn Object from SP statement
-                        int start = script.GetCurrentOffset(expr.LastChild.LastChild.PrevSibling.PrevSibling.StartLocation);
-                        int end = script.GetCurrentOffset(expr.LastChild.LastChild.PrevSibling.EndLocation);
-                        script.RemoveText(start, end - start);
-
-                        //inserting "dbo." in SP variable
-                        var SPName = expr.LastChild.FirstChild.NextSibling.NextSibling.NextSibling;
-                        int curOffset = script.GetCurrentOffset(SPName.StartLocation);
-                        if (!SPName.GetText().Contains("dbo.") && !SPName.GetText().Contains(" "))
-                            script.InsertText(curOffset + 1, "dbo.");
-                    }
-                    if (sqlCmdstmt1.Success)
-                    {
-                        // inserting SqlCommand before first declaration for stored procedure in method
-                        int start = script.GetCurrentOffset(expr.StartLocation);
-                        script.InsertText(start, "SqlCommand ");
-                    }
+                    var Tempvar = expr.FirstChild.NextSibling.LastChild.LastChild.PrevSibling;
+                    int start = script.GetCurrentOffset(Tempvar.PrevSibling.StartLocation);
+                    int end = script.GetCurrentOffset(Tempvar.EndLocation);
+                    script.RemoveText(start, end - start);
                 }
-
-                foreach (var expr in file.IndexOfVarDeclStmt)
+                if (Pat.SqlDtAdptStmt().Match(expr).Success)
                 {
-                    var copy = (VariableDeclarationStatement)expr.Clone();
-
-                    AllPatterns Pat = new AllPatterns();
-                    if (Pat.sqlCmdstmt2().Match(expr).Success)
+                    string MthdretType = expr.GetParent<MethodDeclaration>().ReturnType.GetText();
+                    if (MthdretType == "DataTable" || MthdretType == "System.Data.DataTable")
                     {
-                        var Tempvar = expr.FirstChild.NextSibling.LastChild.LastChild.PrevSibling;
-                        int start = script.GetCurrentOffset(Tempvar.PrevSibling.StartLocation);
-                        int end = script.GetCurrentOffset(Tempvar.EndLocation);
-                        script.RemoveText(start, end - start);
+                        string varName = expr.GetText().Split("()".ToCharArray())[1];
+                        var getDtTbl = Pat.GetDtTbl(varName);
+                        script.Replace(expr, getDtTbl);
                     }
-                    if (Pat.SqlDtAdptStmt().Match(expr).Success)
+                    else if (MthdretType == "DataSet" || MthdretType == "System.Data.DataSet")
                     {
-                        string MthdretType = expr.GetParent<MethodDeclaration>().ReturnType.GetText();
-                        if (MthdretType == "DataTable" || MthdretType == "System.Data.DataTable")
-                        {
-                            string varName = expr.GetText().Split("()".ToCharArray())[1];
-                            var getDtTbl = Pat.GetDtTbl(varName);
-                            script.Replace(expr, getDtTbl);
-                        }
-                        else if (MthdretType == "DataSet" || MthdretType == "System.Data.DataSet")
-                        {
-                            string varName = expr.GetText().Split("()".ToCharArray())[1];
-                            var getDtSet = Pat.GetDtSet(varName);
-                            script.Replace(expr, getDtSet);
-                        }
-                        else
-                        {
-                            //set method return type as dummy
-                            int Len = expr.GetParent<MethodDeclaration>().ReturnType.ToString().Length;
-                            int startOffset = script.GetCurrentOffset(expr.GetParent<MethodDeclaration>().ReturnType.StartLocation);
-                            script.RemoveText(startOffset, Len);
-                            script.InsertText(startOffset, "DummyText");
-                        }
+                        string varName = expr.GetText().Split("()".ToCharArray())[1];
+                        var getDtSet = Pat.GetDtSet(varName);
+                        script.Replace(expr, getDtSet);
                     }
-                    if (Pat.varDeclMthd().Match(expr).Success)
+                    else
                     {
-                        if (expr.Parent.GetType().Name == "BlockStatement" &&
-                            expr.Parent.Parent.GetType().Name == "MethodDeclaration")
-                        {
-                            var varName = expr.FirstChild.NextSibling.FirstChild.GetText();
-                            script.Replace(expr, Pat.varDeclMthd1(varName));
-                        }
-                    }
-                }
-
-                foreach (var expr in file.IndexOfExprStmt)
-                {
-                    var copy = (ExpressionStatement)expr.Clone();
-
-                    AllPatterns Pat = new AllPatterns();
-                    if (Pat.FillExpr().Match(expr).Success){  script.Remove(expr, true); continue;  }
-                    if(Pat.StoredProc().Match(expr).Success){  script.Remove(expr, true);  continue; }
-                    if(Pat.sqlConnstmt().Match(expr).Success){  script.Remove(expr, true);  continue; }
-                    if(Pat.ConnOpenExprStmt().Match(expr).Success){ script.Remove(expr, true);  continue;}
-                    if(Pat.ConnCloseExprStmt().Match(expr).Success) { script.Remove(expr, true);  continue; }
-                    if (Pat.CmdDisposeExprStmt().Match(expr).Success) { script.Remove(expr, true); continue; }
-                    if (Pat.ConvertToInt32().Match(expr).Success){ script.Remove(expr, true); continue; }
-                    if (Pat.ExNonQuery().Match(expr).Success)
-                    {
-                        string varName = expr.FirstChild.FirstChild.GetText();
-                        string objName = expr.FirstChild.LastChild.FirstChild.FirstChild.GetText();
-                        var expr1 = Pat.ExeStrdProc(varName, objName);
-                        script.Replace(expr, expr1);
-                        continue;
-                    }
-
-                    if (Pat.SqlDataAdapterExprStmt().Match(expr).Success)
-                    {
-                        string retType = expr.GetParent<MethodDeclaration>().ReturnType.GetText();
-                        if (retType == "DataTable" || retType == "System.Data.DataTable")   //
-                        {
-                            string varName = expr.GetText().Split("()".ToCharArray())[1];
-                            var getDtTbl = Pat.GetDtTbl(varName);
-                            script.Replace(expr, getDtTbl);
-                        }
-                        else if (retType == "DataSet" || retType == "System.Data.DataSet")
-                        {
-                            string varName = expr.GetText().Split("()".ToCharArray())[1];
-                            var getDtSet = Pat.GetDtSet(varName);
-                            script.Replace(expr, getDtSet);
-                        }
-                        else
-                        {
-                            //set method return type as dummy
-                            int Len = expr.GetParent<MethodDeclaration>().ReturnType.ToString().Length;
-                            int startOffset = script.GetCurrentOffset(expr.GetParent<MethodDeclaration>().ReturnType.StartLocation);
-                            script.RemoveText(startOffset, Len);
-                            script.InsertText(startOffset, "DummyText");
-                        }
-                        continue;
-                    }
-                    if (Pat.ExNonQuery1().Match(expr).Success)
-                    {
-                        var MtchExpr = VariableDeclarationStatement.Null;
-                        string Output = "Output";
-                        string sqlCmdVar = expr.FirstChild.FirstChild.FirstChild.GetText();
-                        var sqlParameterExpr = Pat.sqlParameter();
-                        foreach (var varDeclStmt in expr.Parent.Descendants.OfType<VariableDeclarationStatement>())
-                        {
-                            ICSharpCode.NRefactory.PatternMatching.Match sqlParameter = sqlParameterExpr.Match(varDeclStmt);
-                            if (sqlParameter.Success)
-                            {
-                                MtchExpr = varDeclStmt;
-                                break;
-                            }
-                        }
-                        if (MtchExpr != VariableDeclarationStatement.Null)
-                        {
-                            Output = MtchExpr.FirstChild.NextSibling.FirstChild.GetText();
-                            script.Replace(expr, Pat.gtOtptParameter(sqlCmdVar, Output));
-                        }
-                        continue;
+                        //set method return type as dummy
+                        int Len = expr.GetParent<MethodDeclaration>().ReturnType.ToString().Length;
+                        int startOffset = script.GetCurrentOffset(expr.GetParent<MethodDeclaration>().ReturnType.StartLocation);
+                        script.RemoveText(startOffset, Len);
+                        script.InsertText(startOffset, "DummyText");
                     }
                 }
-
-                // for changing API.RegistrationAPI objAPI in method declaration to RegistrationAPI objAPI
-                foreach (var expr in file.IndexOfMthdDecl)
+                if (Pat.varDeclMthd().Match(expr).Success)
                 {
-                    var copy = (MethodDeclaration)expr.Clone();
-                    var chldOfTypPar = expr.GetChildByRole(Roles.Parameter);
-                    if (chldOfTypPar != null)
+                    if (expr.Parent.GetType().Name == "BlockStatement" &&
+                        expr.Parent.Parent.GetType().Name == "MethodDeclaration")
                     {
-                        string input = Regex.Replace(chldOfTypPar.GetText(), @"\w+\.\b", "");
-                        int offset = script.GetCurrentOffset(chldOfTypPar.StartLocation);
-                        script.RemoveText(offset, chldOfTypPar.GetText().Length);
-                        script.InsertText(offset, input);
+                        var varName = expr.FirstChild.NextSibling.FirstChild.GetText();
+                        script.Replace(expr, Pat.varDeclMthd1(varName));
                     }
                 }
             }
-            return document;
+
         }
-        
+        private void ExprStatement(DocumentScript script, CSharpFile file)
+        {
+            foreach (var expr in file.IndexOfExprStmt)
+            {
+                var copy = (ExpressionStatement)expr.Clone();
+
+                AllPatterns Pat = new AllPatterns();
+                if (Pat.FillExpr().Match(expr).Success) { script.Remove(expr, true); continue; }
+                if (Pat.StoredProc().Match(expr).Success) { script.Remove(expr, true); continue; }
+                if (Pat.sqlConnstmt().Match(expr).Success) { script.Remove(expr, true); continue; }
+                if (Pat.ConnOpenExprStmt().Match(expr).Success) { script.Remove(expr, true); continue; }
+                if (Pat.ConnCloseExprStmt().Match(expr).Success) { script.Remove(expr, true); continue; }
+                if (Pat.CmdDisposeExprStmt().Match(expr).Success) { script.Remove(expr, true); continue; }
+                if (Pat.ConvertToInt32().Match(expr).Success) { script.Remove(expr, true); continue; }
+                if (Pat.ExNonQuery().Match(expr).Success)
+                {
+                    string varName = expr.FirstChild.FirstChild.GetText();
+                    string objName = expr.FirstChild.LastChild.FirstChild.FirstChild.GetText();
+                    var expr1 = Pat.ExeStrdProc(varName, objName);
+                    script.Replace(expr, expr1);
+                    continue;
+                }
+
+                if (Pat.SqlDataAdapterExprStmt().Match(expr).Success)
+                {
+                    string retType = expr.GetParent<MethodDeclaration>().ReturnType.GetText();
+                    if (retType == "DataTable" || retType == "System.Data.DataTable")   //
+                    {
+                        string varName = expr.GetText().Split("()".ToCharArray())[1];
+                        var getDtTbl = Pat.GetDtTbl(varName);
+                        script.Replace(expr, getDtTbl);
+                    }
+                    else if (retType == "DataSet" || retType == "System.Data.DataSet")
+                    {
+                        string varName = expr.GetText().Split("()".ToCharArray())[1];
+                        var getDtSet = Pat.GetDtSet(varName);
+                        script.Replace(expr, getDtSet);
+                    }
+                    else
+                    {
+                        //set method return type as dummy
+                        int Len = expr.GetParent<MethodDeclaration>().ReturnType.ToString().Length;
+                        int startOffset = script.GetCurrentOffset(expr.GetParent<MethodDeclaration>().ReturnType.StartLocation);
+                        script.RemoveText(startOffset, Len);
+                        script.InsertText(startOffset, "DummyText");
+                    }
+                    continue;
+                }
+                if (Pat.ExNonQuery1().Match(expr).Success)
+                {
+                    var MtchExpr = VariableDeclarationStatement.Null;
+                    string Output = "Output";
+                    string sqlCmdVar = expr.FirstChild.FirstChild.FirstChild.GetText();
+                    var sqlParameterExpr = Pat.sqlParameter();
+                    foreach (var varDeclStmt in expr.Parent.Descendants.OfType<VariableDeclarationStatement>())
+                    {
+                        ICSharpCode.NRefactory.PatternMatching.Match sqlParameter = sqlParameterExpr.Match(varDeclStmt);
+                        if (sqlParameter.Success)
+                        {
+                            MtchExpr = varDeclStmt;
+                            break;
+                        }
+                    }
+                    if (MtchExpr != VariableDeclarationStatement.Null)
+                    {
+                        Output = MtchExpr.FirstChild.NextSibling.FirstChild.GetText();
+                        script.Replace(expr, Pat.gtOtptParameter(sqlCmdVar, Output));
+                    }
+                    continue;
+                }
+            }
+
+        }
+        private void MethodDecl(DocumentScript script, CSharpFile file)
+        {
+            foreach (var expr in file.IndexOfMthdDecl)
+            {
+                var copy = (MethodDeclaration)expr.Clone();
+                var chldOfTypPar = expr.GetChildByRole(Roles.Parameter);
+                if (chldOfTypPar != null)
+                {
+                    string input = Regex.Replace(chldOfTypPar.GetText(), @"\w+\.\b", "");
+                    int offset = script.GetCurrentOffset(chldOfTypPar.StartLocation);
+                    script.RemoveText(offset, chldOfTypPar.GetText().Length);
+                    script.InsertText(offset, input);
+                }
+            }
+        }
     }
 }
