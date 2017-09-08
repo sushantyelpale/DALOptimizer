@@ -23,17 +23,17 @@ namespace DALOptimizer
 		/// <summary>
 		/// Title is the project name as specified in the .sln file.
 		/// </summary>
-		public readonly string Title;
+		public readonly string title;
 		
 		/// <summary>
 		/// Name of the output assembly.
 		/// </summary>
-		public readonly string AssemblyName;
+		public readonly string assemblyName;
 		
 		/// <summary>
 		/// Full path to the .csproj file.
 		/// </summary>
-		public readonly string FileName;
+		public readonly string fileName;
 		
 		public readonly List<CSharpFile> Files = new List<CSharpFile>();
 		
@@ -56,13 +56,13 @@ namespace DALOptimizer
 			fileName = Path.GetFullPath(fileName);
 			
 			this.Solution = solution;
-			this.Title = title;
-			this.FileName = fileName;
+			this.title = title;
+			this.fileName = fileName;
 			
 			// Use MSBuild to open the .csproj
 			var msbuildProject = new Microsoft.Build.Evaluation.Project(fileName);
 			// Figure out some compiler settings
-			this.AssemblyName = msbuildProject.GetPropertyValue("AssemblyName");
+			this.assemblyName = msbuildProject.GetPropertyValue("AssemblyName");
 			this.CompilerSettings.AllowUnsafeBlocks = GetBoolProperty(msbuildProject, "AllowUnsafeBlocks") ?? false;
 			this.CompilerSettings.CheckForOverflow = GetBoolProperty(msbuildProject, "CheckForOverflowUnderflow") ?? false;
 			string defineConstants = msbuildProject.GetPropertyValue("DefineConstants");
@@ -71,7 +71,7 @@ namespace DALOptimizer
 			
 			// Initialize the unresolved type system
 			IProjectContent projectContent = new CSharpProjectContent();
-            projectContent = projectContent.SetAssemblyName(this.AssemblyName);
+            projectContent = projectContent.SetAssemblyName(this.assemblyName);
             projectContent = projectContent.SetProjectFileName(fileName);
             projectContent = projectContent.SetCompilerSettings(this.CompilerSettings);
 			// Parse the C# code files
@@ -80,7 +80,7 @@ namespace DALOptimizer
 				Files.Add(file);
 			}
 			// Add parsed files to the type system
-            projectContent = projectContent.AddOrUpdateFiles(Files.Select(f => f.UnresolvedTypeSystemForFile));
+            projectContent = projectContent.AddOrUpdateFiles(Files.Select(f => f.unresolvedTypeSystemForFile));
 			
 			// Add referenced assemblies:
 			foreach (string assemblyFile in ResolveAssemblyReferences(msbuildProject)) {
@@ -107,7 +107,7 @@ namespace DALOptimizer
 			
 			projectInstance.Build("ResolveAssemblyReferences", new [] { new ConsoleLogger(LoggerVerbosity.Minimal) });
 			var items = projectInstance.GetItems("_ResolveAssemblyReferenceResolvedFiles");
-			string baseDirectory = Path.GetDirectoryName(this.FileName);
+			string baseDirectory = Path.GetDirectoryName(this.fileName);
 			return items.Select(i => Path.Combine(baseDirectory, i.GetMetadataValue("Identity")));
 		}
 		
@@ -123,7 +123,7 @@ namespace DALOptimizer
 		
 		public override string ToString()
 		{
-			return string.Format("[CSharpProject AssemblyName={0}]", AssemblyName);
+			return string.Format("[CSharpProject AssemblyName={0}]", assemblyName);
 		}
 	}
 }

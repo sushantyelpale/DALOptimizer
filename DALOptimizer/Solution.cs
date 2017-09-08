@@ -16,7 +16,7 @@ namespace DALOptimizer
     /// </summary>
     public class Solution
     {
-        public readonly string Directory;
+        public readonly string directory;
         public readonly List<CSharpProject> Projects = new List<CSharpProject>();
 
         public IEnumerable<CSharpFile> AllFiles
@@ -26,14 +26,14 @@ namespace DALOptimizer
 
         public Solution(string fileName)
         {
-            this.Directory = Path.GetDirectoryName(fileName);
+            this.directory = Path.GetDirectoryName(fileName);
         }
 
         public void ChooseCSProjFile(string fileName)
         {
             if (fileName.EndsWith(".csproj"))
             {
-                Projects.Add(new CSharpProject(this, "SampleProj", Path.Combine(Directory, fileName)));
+                Projects.Add(new CSharpProject(this, "SampleProj", Path.Combine(directory, fileName)));
             }
             else if (fileName.EndsWith(".sln"))
             {
@@ -53,7 +53,7 @@ namespace DALOptimizer
                                 // ignore folders
                                 break;
                             case "{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}": // C# project
-                                Projects.Add(new CSharpProject(this, title, Path.Combine(Directory, location)));
+                                Projects.Add(new CSharpProject(this, title, Path.Combine(directory, location)));
                                 break;
                             default:
                                 Console.WriteLine("Project {0} has unsupported type {1}", location, typeGuid);

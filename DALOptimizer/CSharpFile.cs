@@ -9,23 +9,23 @@ namespace DALOptimizer
 {
     public class CSharpFile
     {
-        public readonly CSharpProject Project;
-        public readonly string FileName;
-        public readonly string OriginalText;
+        public readonly CSharpProject project;
+        public readonly string fileName;
+        public readonly string originalText;
 
         public SyntaxTree syntaxTree;
-        public CSharpUnresolvedFile UnresolvedTypeSystemForFile;
+        public CSharpUnresolvedFile unresolvedTypeSystemForFile;
 
         public CSharpFile(CSharpProject project, string fileName)
         {
-            this.Project = project;
-            this.FileName = fileName;
+            this.project = project;
+            this.fileName = fileName;
 
             CSharpParser parsedFile = new CSharpParser(project.CompilerSettings);
 
             // Keep the original text around; it might get used for refactoring later.
-            this.OriginalText = File.ReadAllText(fileName);
-            this.syntaxTree = parsedFile.Parse(this.OriginalText, fileName);
+            this.originalText = File.ReadAllText(fileName);
+            this.syntaxTree = parsedFile.Parse(this.originalText, fileName);
 
             if (parsedFile.HasErrors)
             {
@@ -33,12 +33,12 @@ namespace DALOptimizer
                 foreach (var error in parsedFile.ErrorsAndWarnings)
                     Console.WriteLine("  " + error.Region + " " + error.Message);
             }
-            this.UnresolvedTypeSystemForFile = this.syntaxTree.ToTypeSystem();
+            this.unresolvedTypeSystemForFile = this.syntaxTree.ToTypeSystem();
         }
 
         public CSharpAstResolver CreateResolver()
         {
-            return new CSharpAstResolver(Project.Compilation, syntaxTree, UnresolvedTypeSystemForFile);
+            return new CSharpAstResolver(project.Compilation, syntaxTree, unresolvedTypeSystemForFile);
         }
 
         public List<FieldDeclaration> IndexOfFieldDecl = new List<FieldDeclaration>();

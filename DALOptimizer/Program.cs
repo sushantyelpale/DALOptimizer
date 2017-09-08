@@ -16,9 +16,9 @@ namespace DALOptimizer
         [STAThread]
         public static void Main(string[] args)
         {
-            OpenFileDialog opnfd = new OpenFileDialog();
-            opnfd.ShowDialog();
-            string fileName = opnfd.FileName;
+            OpenFileDialog openFileDialogDisc = new OpenFileDialog();
+            openFileDialogDisc.ShowDialog();
+            string fileName = openFileDialogDisc.FileName;
             
             if (string.IsNullOrWhiteSpace(fileName)){
                 MessageBox.Show("Please Select one file ");
@@ -34,18 +34,18 @@ namespace DALOptimizer
             // Capture patterns & store it in respective lists of Node patterns
             foreach (var file in solution.AllFiles)
             {
-                if (Path.GetFileName(file.FileName) == "DatabaseProcessing.cs")
+                if (Path.GetFileName(file.fileName) == "DatabaseProcessing.cs")
                        continue;
-                var astResolver = new CSharpAstResolver(file.Project.Compilation, file.syntaxTree, file.UnresolvedTypeSystemForFile);
+                var astResolver = new CSharpAstResolver(file.project.Compilation, file.syntaxTree, file.unresolvedTypeSystemForFile);
                 matchInvocation.CheckAllInvocation(file, astResolver);
             }
 
             //PrintFunction pr = new PrintFunction();
             //pr.PrintMethod(solution);
 
-            Console.Write("Apply refactorings? ");
+            Console.Write("Apply refactorings?  Enter \"y\" for  yes    &   Press any key for \"no\":");
             string answer = Console.ReadLine();
-            if ("yes".Equals(answer, StringComparison.OrdinalIgnoreCase) || "y".Equals(answer, StringComparison.OrdinalIgnoreCase))
+            if ("y".Equals(answer, StringComparison.OrdinalIgnoreCase))
             { 
                 foreach (var file in solution.AllFiles)
                 {
@@ -57,9 +57,8 @@ namespace DALOptimizer
                         continue;
 
                     var document = matchExpr.CheckAllExpressions(file);
-                    //File.WriteAllText(Path.ChangeExtension(file.FileName, ".output.cs"), document.Text);
-                    Path.GetDirectoryName(Application.ExecutablePath);
-                    File.WriteAllText(Path.ChangeExtension(file.FileName, ".cs"), document.Text);
+                    File.WriteAllText(Path.ChangeExtension(file.fileName, ".output.cs"), document.Text);
+                    //File.WriteAllText(Path.ChangeExtension(file.fileName, ".cs"), document.Text);
                 }
             }
             Console.ReadKey();
