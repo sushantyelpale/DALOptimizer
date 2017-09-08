@@ -12,7 +12,7 @@ using ICSharpCode.NRefactory.Utils;
 namespace DALOptimizer
 {
     /// <summary>
-    /// Represents a Visual Studio solution (.sln file).
+    /// Represents a Visual Studio solution (.csProj or .sln files).
     /// </summary>
     public class Solution
     {
@@ -21,53 +21,53 @@ namespace DALOptimizer
 
         public IEnumerable<CSharpFile> AllFiles
         {
-            get
-            {
-                return Projects.SelectMany(p => p.Files);
-            }
+            get{  return Projects.SelectMany(p => p.Files); }
         }
 
         public Solution(string fileName)
         {
             this.Directory = Path.GetDirectoryName(fileName);
-            if (fileName.Contains(".csproj"))
+        }
+
+        public void ChooseCSProjFile(string fileName)
+        {
+            if (fileName.EndsWith(".csproj"))
             {
                 Projects.Add(new CSharpProject(this, "SampleProj", Path.Combine(Directory, fileName)));
             }
-            
-            var projectLinePattern = new Regex("Project\\(\"(?<TypeGuid>.*)\"\\)\\s+=\\s+\"(?<Title>.*)\",\\s*\"(?<Location>.*)\",\\s*\"(?<Guid>.*)\"");
-            foreach (string line in File.ReadLines(fileName))
+            else if (fileName.EndsWith(".sln"))
             {
-                Match match = projectLinePattern.Match(line);
-                if (match.Success)
+                var projectLinePattern = new Regex("Project\\(\"(?<TypeGuid>.*)\"\\)\\s+=\\s+\"(?<Title>.*)\",\\s*\"(?<Location>.*)\",\\s*\"(?<Guid>.*)\"");
+                foreach (string line in File.ReadLines(fileName))
                 {
-                    string typeGuid = match.Groups["TypeGuid"].Value;
-                    string title = match.Groups["Title"].Value;
-                    string location = match.Groups["Location"].Value;
-                    string guid = match.Groups["Guid"].Value;
-                    switch (typeGuid.ToUpperInvariant())
+                    Match match = projectLinePattern.Match(line);
+                    if (match.Success)
                     {
-                        case "{2150E333-8FDC-42A3-9474-1A3956D46DE8}": // Solution Folder
-                            // ignore folders
-                            break;
-                        case "{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}": // C# project
-                            Projects.Add(new CSharpProject(this, title, Path.Combine(Directory, location)));
-                            break;
-                        default:
-                            Console.WriteLine("Project {0} has unsupported type {1}", location, typeGuid);
-                            break;
+                        string typeGuid = match.Groups["TypeGuid"].Value;
+                        string title = match.Groups["Title"].Value;
+                        string location = match.Groups["Location"].Value;
+                        string guid = match.Groups["Guid"].Value;
+                        switch (typeGuid.ToUpperInvariant())
+                        {
+                            case "{2150E333-8FDC-42A3-9474-1A3956D46DE8}": // Solution Folder
+                                // ignore folders
+                                break;
+                            case "{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}": // C# project
+                                Projects.Add(new CSharpProject(this, title, Path.Combine(Directory, location)));
+                                break;
+                            default:
+                                Console.WriteLine("Project {0} has unsupported type {1}", location, typeGuid);
+                                break;
+                        }
                     }
                 }
             }
-            // Create compilations (resolved type systems) after all projects have been loaded.
-            // (we can't do this earlier because project A might have a reference to project B, where A is loaded before B)
-            // To allow NRefactory to resolve project references, we need to use a 'DefaultSolutionSnapshot'
-            // instead of calling CreateCompilation() on each project individually.
+            else
+                Environment.Exit(0);
+
             var solutionSnapshot = new DefaultSolutionSnapshot(this.Projects.Select(p => p.ProjectContent));
             foreach (CSharpProject project in this.Projects)
-            {
                 project.Compilation = solutionSnapshot.GetCompilation(project.ProjectContent);
-            }
         }
 
         ConcurrentDictionary<string, IUnresolvedAssembly> assemblyDict = new ConcurrentDictionary<string, IUnresolvedAssembly>(Platform.FileNameComparer);

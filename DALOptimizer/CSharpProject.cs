@@ -70,22 +70,22 @@ namespace DALOptimizer
 				this.CompilerSettings.ConditionalSymbols.Add(symbol.Trim());
 			
 			// Initialize the unresolved type system
-			IProjectContent pc = new CSharpProjectContent();
-			pc = pc.SetAssemblyName(this.AssemblyName);
-			pc = pc.SetProjectFileName(fileName);
-			pc = pc.SetCompilerSettings(this.CompilerSettings);
+			IProjectContent projectContent = new CSharpProjectContent();
+            projectContent = projectContent.SetAssemblyName(this.AssemblyName);
+            projectContent = projectContent.SetProjectFileName(fileName);
+            projectContent = projectContent.SetCompilerSettings(this.CompilerSettings);
 			// Parse the C# code files
 			foreach (var item in msbuildProject.GetItems("Compile")) {
 				var file = new CSharpFile(this, Path.Combine(msbuildProject.DirectoryPath, item.EvaluatedInclude));
 				Files.Add(file);
 			}
 			// Add parsed files to the type system
-			pc = pc.AddOrUpdateFiles(Files.Select(f => f.UnresolvedTypeSystemForFile));
+            projectContent = projectContent.AddOrUpdateFiles(Files.Select(f => f.UnresolvedTypeSystemForFile));
 			
 			// Add referenced assemblies:
 			foreach (string assemblyFile in ResolveAssemblyReferences(msbuildProject)) {
 				IUnresolvedAssembly assembly = solution.LoadAssembly(assemblyFile);
-				pc = pc.AddAssemblyReferences(new [] { assembly });
+                projectContent = projectContent.AddAssemblyReferences(new[] { assembly });
 			}
 			
 			// Add project references:
@@ -93,9 +93,9 @@ namespace DALOptimizer
 				string referencedFileName = Path.Combine(msbuildProject.DirectoryPath, item.EvaluatedInclude);
 				// Normalize the path; this is required to match the name with the referenced project's file name
 				referencedFileName = Path.GetFullPath(referencedFileName);
-				pc = pc.AddAssemblyReferences(new[] { new ProjectReference(referencedFileName) });
+                projectContent = projectContent.AddAssemblyReferences(new[] { new ProjectReference(referencedFileName) });
 			}
-			this.ProjectContent = pc;
+            this.ProjectContent = projectContent;
 		}
 		
 		IEnumerable<string> ResolveAssemblyReferences(Microsoft.Build.Evaluation.Project project)

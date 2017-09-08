@@ -9,7 +9,6 @@ namespace DALOptimizer
     {
         public void PrintMethod(Solution solution)
         {
-
             Console.WriteLine("Found {0} places to refactor Field Declaration in {1} files.",
                   solution.AllFiles.Sum(f => f.IndexOfFieldDecl.Count),
                   solution.AllFiles.Count(f => f.IndexOfFieldDecl.Count > 0));

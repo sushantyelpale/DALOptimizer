@@ -13,7 +13,7 @@ namespace DALOptimizer
         public readonly string FileName;
         public readonly string OriginalText;
 
-        public SyntaxTree SyntaxTree;
+        public SyntaxTree syntaxTree;
         public CSharpUnresolvedFile UnresolvedTypeSystemForFile;
 
         public CSharpFile(CSharpProject project, string fileName)
@@ -21,29 +21,24 @@ namespace DALOptimizer
             this.Project = project;
             this.FileName = fileName;
 
-            CSharpParser p = new CSharpParser(project.CompilerSettings);
-            //			using (var stream = File.OpenRead(fileName)) {
-            //				this.CompilationUnit = p.Parse(stream, fileName);
-            //			}
+            CSharpParser parsedFile = new CSharpParser(project.CompilerSettings);
 
-            // Keep the original text around; we might use it for a refactoring later
+            // Keep the original text around; it might get used for refactoring later.
             this.OriginalText = File.ReadAllText(fileName);
-            this.SyntaxTree = p.Parse(this.OriginalText, fileName);
+            this.syntaxTree = parsedFile.Parse(this.OriginalText, fileName);
 
-            if (p.HasErrors)
+            if (parsedFile.HasErrors)
             {
                 Console.WriteLine("Error parsing " + fileName + ":");
-                foreach (var error in p.ErrorsAndWarnings)
-                {
+                foreach (var error in parsedFile.ErrorsAndWarnings)
                     Console.WriteLine("  " + error.Region + " " + error.Message);
-                }
             }
-            this.UnresolvedTypeSystemForFile = this.SyntaxTree.ToTypeSystem();
+            this.UnresolvedTypeSystemForFile = this.syntaxTree.ToTypeSystem();
         }
 
         public CSharpAstResolver CreateResolver()
         {
-            return new CSharpAstResolver(Project.Compilation, SyntaxTree, UnresolvedTypeSystemForFile);
+            return new CSharpAstResolver(Project.Compilation, syntaxTree, UnresolvedTypeSystemForFile);
         }
 
         public List<FieldDeclaration> IndexOfFieldDecl = new List<FieldDeclaration>();

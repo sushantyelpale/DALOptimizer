@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-
 using ICSharpCode.NRefactory.CSharp;
 using ICSharpCode.NRefactory.CSharp.Refactoring;
 using ICSharpCode.NRefactory.CSharp.Resolver;
@@ -16,63 +15,100 @@ namespace DALOptimizer
     class MatchInvocation
     {
         AllPatterns Pat = new AllPatterns();
-        //PrintFunction PrFun = new PrintFunction();
-        // For All Global field Declarations
+
+        public void CheckAllInvocation(CSharpFile file, CSharpAstResolver astResolver) 
+        {
+            foreach (var invocation in file.syntaxTree.Descendants.OfType<AstNode>())
+            {
+                //track all expression Statemens
+                if (invocation.GetType().Name == "ExpressionStatement")
+                {
+                    MatchExprStmt(invocation, file, astResolver);
+                    continue;
+                }
+                //catch clause
+                if (invocation.GetType().Name == "CatchClause")
+                {
+                    MatchCatchClause(invocation, file, astResolver);
+                    continue;
+                }
+
+                // For All Global Field Declarations
+                if (invocation.GetType().Name == "FieldDeclaration")
+                {
+                    MatchFieldDecl(invocation, file, astResolver);
+                    continue;
+                }
+                // For variable Decaration of type {SqlCommand cmd = new SqlCommand ("dbo.InboxDeviceReport", con);}
+                if (invocation.GetType().Name == "VariableDeclarationStatement")
+                {
+                    MatchVarDeclStmt(invocation, file, astResolver);
+                    continue;
+                }
+
+                if (invocation.GetType().Name == "AssignmentExpression")
+                {
+                    MatchAssExpr(invocation, file, astResolver);
+                    continue;
+                }
+
+                //check Global Property Declaration
+                if (invocation.GetType().Name == "PropertyDeclaration")
+                {
+                    MatchPropDecl(invocation, file, astResolver);
+                    continue;
+                }
+
+                //check Finally Block
+                if (invocation.GetType().Name == "BlockStatement")
+                {
+                    MatchBlock(invocation, file, astResolver);
+                    continue;
+                }
+
+                if (invocation.GetType().Name == "MethodDeclaration")
+                {
+                    MatchMethodDecl(invocation, file, astResolver);
+                    continue;
+                }
+            }
+        }
+
+        // For All Global field Declarations eg. PrintFunction PrFun = new PrintFunction();
         public void MatchFieldDecl(AstNode invocation, CSharpFile file, CSharpAstResolver astResolver)
         {
             if (invocation.Parent.GetType().Name.ToString() == "TypeDeclaration")
-            {
                 file.IndexOfFieldDecl.Add((FieldDeclaration)invocation);
-                //PrFun.PrintInvocation(invocation);
-            }
         }
 
         // For All Global Property Declarations
         public void MatchPropDecl(AstNode invocation, CSharpFile file, CSharpAstResolver astResolver)
         {
             if (invocation.Parent.GetType().Name.ToString() == "TypeDeclaration")
-            {
                 file.IndexOfPropDecl.Add((PropertyDeclaration)invocation);
-                //PrFun.PrintInvocation(invocation);
-            }
         }
 
         public void MatchCatchClause(AstNode invocation, CSharpFile file, CSharpAstResolver astResolver)
         {
             file.IndexOfCtchClause.Add((CatchClause)invocation);
-            //PrFun.PrintInvocation(invocation);
         }
 
         public void MatchAssExpr(AstNode invocation, CSharpFile file, CSharpAstResolver astResolver)
         {
-            var expr7 = Pat.sqlCmdstmt1();
-            Match sqlCmdstmt1 = expr7.Match(invocation);
+            Match sqlCmdstmt1 = Pat.sqlCmdstmt1().Match(invocation);
             if (sqlCmdstmt1.Success)
-            {
                 file.IndexOfAssExpr.Add((AssignmentExpression)invocation);
-                //PrFun.PrintInvocation(invocation);
-            }
         }
 
         public void MatchVarDeclStmt(AstNode invocation, CSharpFile file, CSharpAstResolver astResolver)
         {
-            var expr6 = Pat.sqlCmdstmt2();
-            Match sqlCmdstmt2 = expr6.Match(invocation);
-            var expr7 = Pat.SqlDtAdptStmt();
-            Match SqlDtAdptStmt = expr7.Match(invocation);
-            var expr8 = Pat.varDeclMthd();
-            Match varDeclMthd = expr8.Match(invocation);
+            Match sqlCmdstmt2 = Pat.sqlCmdstmt2().Match(invocation);
+            Match SqlDtAdptStmt = Pat.SqlDtAdptStmt().Match(invocation);
+            Match varDeclMthd = Pat.varDeclMthd().Match(invocation);
 
-            if (sqlCmdstmt2.Success)
-            {
+            if (sqlCmdstmt2.Success || SqlDtAdptStmt.Success)
                 file.IndexOfVarDeclStmt.Add((VariableDeclarationStatement)invocation);
-                //PrFun.PrintInvocation(invocation);
-            }
-            if (SqlDtAdptStmt.Success)
-            {
-                file.IndexOfVarDeclStmt.Add((VariableDeclarationStatement)invocation);
-            }
-            if (varDeclMthd.Success)
+            else if (varDeclMthd.Success)
             {
                 if (invocation.Parent.GetType().Name == "BlockStatement" && invocation.Parent.Parent.GetType().Name == "MethodDeclaration")
                 {
@@ -84,53 +120,28 @@ namespace DALOptimizer
         //Match Expression Statement  //da.Fill(dt);
         public void MatchExprStmt(AstNode invocation, CSharpFile file, CSharpAstResolver astResolver)
         {
-            var expr1 = Pat.FillExpr();
-            var expr2 = Pat.logErr();
-            var expr3 = Pat.ExNonQuery();
-            var expr4 = Pat.StoredProc();
-            var expr5 = Pat.sqlConnstmt();
-            var expr6 = Pat.ConnOpenExprStmt();
-            var expr7 = Pat.ConnCloseExprStmt();
-            var expr8 = Pat.CmdDisposeExprStmt();
-            var expr9 = Pat.SqlDataAdapterExprStmt();
-            var expr10 = Pat.ExNonQuery1();
-            var expr11 = Pat.ConvertToInt32();
-
-            Match FillExpr = expr1.Match(invocation);
-            Match logErr = expr2.Match(invocation);
-            Match ExNonQuery = expr3.Match(invocation);
-            Match StoredProc = expr4.Match(invocation);
-            Match sqlConnstmt = expr5.Match(invocation);
-            Match ConnOpenExprStmt = expr6.Match(invocation);
-            Match ConnCloseExprStmt = expr7.Match(invocation);
-            Match CmdDisposeExprStmt = expr8.Match(invocation);
-            Match SqlDataAdapterExprStmt = expr9.Match(invocation);
-            Match ExNonQuery1 = expr10.Match(invocation);
-            Match ConvertToInt32 = expr11.Match(invocation);
-
-            if (FillExpr.Success || logErr.Success || ExNonQuery.Success ||
-                CmdDisposeExprStmt.Success || SqlDataAdapterExprStmt.Success ||
-                ConnCloseExprStmt.Success || ConvertToInt32.Success || ExNonQuery1.Success ||
-                StoredProc.Success || sqlConnstmt.Success || ConnOpenExprStmt.Success)
-            {
-                file.IndexOfExprStmt.Add((ExpressionStatement)invocation);
-                //PrFun.PrintInvocation(invocation);
-            }
+            if (Pat.FillExpr().Match(invocation).Success) { file.IndexOfExprStmt.Add((ExpressionStatement)invocation); }
+            else if (Pat.logErr().Match(invocation).Success) { file.IndexOfExprStmt.Add((ExpressionStatement)invocation); }
+            else if (Pat.ExNonQuery().Match(invocation).Success) { file.IndexOfExprStmt.Add((ExpressionStatement)invocation); }
+            else if (Pat.StoredProc().Match(invocation).Success) { file.IndexOfExprStmt.Add((ExpressionStatement)invocation); }
+            else if (Pat.sqlConnstmt().Match(invocation).Success) { file.IndexOfExprStmt.Add((ExpressionStatement)invocation); }
+            else if (Pat.ConnOpenExprStmt().Match(invocation).Success) { file.IndexOfExprStmt.Add((ExpressionStatement)invocation); }
+            else if (Pat.ConnCloseExprStmt().Match(invocation).Success) { file.IndexOfExprStmt.Add((ExpressionStatement)invocation); }
+            else if (Pat.CmdDisposeExprStmt().Match(invocation).Success) { file.IndexOfExprStmt.Add((ExpressionStatement)invocation); }
+            else if (Pat.SqlDataAdapterExprStmt().Match(invocation).Success) { file.IndexOfExprStmt.Add((ExpressionStatement)invocation); }
+            else if (Pat.ExNonQuery1().Match(invocation).Success) { file.IndexOfExprStmt.Add((ExpressionStatement)invocation); }
+            else if (Pat.ConvertToInt32().Match(invocation).Success) { file.IndexOfExprStmt.Add((ExpressionStatement)invocation); }
         }
 
         public void MatchMethodDecl(AstNode invocation, CSharpFile file, CSharpAstResolver astResolver)
         {
             file.IndexOfMthdDecl.Add((MethodDeclaration)invocation);
-            //PrFun.PrintInvocation(invocation);
         }
 
         public void MatchBlock(AstNode invocation, CSharpFile file, CSharpAstResolver astResolver)
         {
             if (invocation.PrevSibling.GetText() == "finally")
-            {
                 file.IndexOfBlockStmt.Add((BlockStatement)invocation);
-                //PrFun.PrintInvocation(invocation);
-            }
         }
     }
 }
