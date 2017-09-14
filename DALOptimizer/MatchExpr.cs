@@ -107,7 +107,7 @@ namespace DALOptimizer
                     if (!SPName.GetText().Contains("dbo.") && !SPName.GetText().Contains(" "))
                         script.InsertText(curOffset + 1, "dbo.");
                 }
-                if (Pat.sqlCmdstmt1().Match(expr).Success)
+                else if (Pat.sqlCmdstmt1().Match(expr).Success)
                 {
                     // inserting SqlCommand before first declaration for stored procedure in method
                     int start = script.GetCurrentOffset(expr.StartLocation);
@@ -121,8 +121,8 @@ namespace DALOptimizer
             foreach (var expr in file.IndexOfVarDeclStmt)
             {
                 var copy = (VariableDeclarationStatement)expr.Clone();
-
                 AllPatterns Pat = new AllPatterns();
+                
                 if (Pat.sqlCmdstmt2().Match(expr).Success)
                 {
                     var Tempvar = expr.FirstChild.NextSibling.LastChild.LastChild.PrevSibling;
@@ -130,20 +130,12 @@ namespace DALOptimizer
                     int end = script.GetCurrentOffset(Tempvar.EndLocation);
                     script.RemoveText(start, end - start);
                 }
-                if (Pat.SqlDtAdptStmt().Match(expr).Success)
+                else if (Pat.SqlDtAdptStmt().Match(expr).Success)
                 {
-                    string MthdretType = expr.GetParent<MethodDeclaration>().ReturnType.GetText();
-                    if (MthdretType == "DataTable" || MthdretType == "System.Data.DataTable")
+                    string retType = expr.GetParent<MethodDeclaration>().ReturnType.GetText();
+                    if (retType.Contains("DataTable") || retType.Contains("DataSet"))
                     {
-                        string varName = expr.GetText().Split("()".ToCharArray())[1];
-                        var getDtTbl = Pat.GetDtTbl(varName);
-                        script.Replace(expr, getDtTbl);
-                    }
-                    else if (MthdretType == "DataSet" || MthdretType == "System.Data.DataSet")
-                    {
-                        string varName = expr.GetText().Split("()".ToCharArray())[1];
-                        var getDtSet = Pat.GetDtSet(varName);
-                        script.Replace(expr, getDtSet);
+                        DataTableSetExpression(expr, script, retType);
                     }
                     else
                     {
@@ -154,7 +146,7 @@ namespace DALOptimizer
                         script.InsertText(startOffset, "DummyText");
                     }
                 }
-                if (Pat.varDeclMthd().Match(expr).Success)
+                else if (Pat.varDeclMthd().Match(expr).Success)
                 {
                     if (expr.Parent.GetType().Name == "BlockStatement" &&
                         expr.Parent.Parent.GetType().Name == "MethodDeclaration")
@@ -164,27 +156,65 @@ namespace DALOptimizer
                     }
                 }
             }
-
         }
+
+        
+        private void DataTableSetExpression(AstNode expr, DocumentScript script, string retType)
+        {
+            string varName = expr.GetText().Split("()".ToCharArray())[1];
+            AllPatterns Pat = new AllPatterns();
+            ExpressionStatement fillExpr = Pat.FillExpr();
+
+            var MatchedExpression = ExpressionStatement.Null;
+            foreach (ExpressionStatement expressionStatement in expr.Parent.Descendants.OfType<ExpressionStatement>())
+            {
+                if (fillExpr.Match(expressionStatement).Success)
+                {
+                    MatchedExpression = expressionStatement;
+                    break;
+                }
+            }
+
+            if (MatchedExpression != ExpressionStatement.Null)
+            {
+                string varName1 = MatchedExpression.LastChild.PrevSibling.LastChild.PrevSibling.GetText();
+                if (retType.Contains("DataTable"))
+                {
+                    script.Replace(expr, Pat.GetDtTbl(varName, varName1));    
+                }
+                else if (retType.Contains("DataSet")) 
+                {
+                    script.Replace(expr, Pat.GetDtSet(varName, varName1));
+                }
+            }
+            else
+            {
+                script.InsertText(script.GetCurrentOffset(expr.StartLocation), "test.Fill (test); Not found");
+            }
+        }
+
+
+
         private void ExprStatement(DocumentScript script, CSharpFile file)
         {
             foreach (var expr in file.IndexOfExprStmt)
             {
                 var copy = (ExpressionStatement)expr.Clone();
                 AllPatterns Pat = new AllPatterns();
-                ExpressionStatement[] expressionStatements = new ExpressionStatement[] { 
-                    Pat.FillExpr(), Pat.StoredProc(), Pat.sqlConnstmt(), Pat.ConnOpenExprStmt(), 
-                    Pat.ConnCloseExprStmt(), Pat.CmdDisposeExprStmt(), Pat.ConvertToInt32() };
 
-                foreach (ExpressionStatement expressionStatement in expressionStatements)
+                Func<ExpressionStatement>[] functions = {
+                    Pat.FillExpr, Pat.StoredProc, Pat.sqlConnstmt, Pat.ConnOpenExprStmt, 
+                    Pat.ConnCloseExprStmt, Pat.CmdDisposeExprStmt, Pat.ConvertToInt32, Pat.ConnectionStmt};
+
+                foreach (var function in functions)
                 {
-                    if (expressionStatement.Match(expr).Success)
+                    if (function().Match(expr).Success)
                     {
                         script.Remove(expr, true);
                         break;
                     }
                 }
-
+                
                 if (Pat.ExNonQuery().Match(expr).Success)
                 {
                     string varName = expr.FirstChild.FirstChild.GetText();
@@ -197,17 +227,9 @@ namespace DALOptimizer
                 if (Pat.SqlDataAdapterExprStmt().Match(expr).Success)
                 {
                     string retType = expr.GetParent<MethodDeclaration>().ReturnType.GetText();
-                    if (retType == "DataTable" || retType == "System.Data.DataTable")  
-                    {
-                        string varName = expr.GetText().Split("()".ToCharArray())[1];
-                        var getDtTbl = Pat.GetDtTbl(varName);
-                        script.Replace(expr, getDtTbl);
-                    }
-                    else if (retType == "DataSet" || retType == "System.Data.DataSet")
-                    {
-                        string varName = expr.GetText().Split("()".ToCharArray())[1];
-                        var getDtSet = Pat.GetDtSet(varName);
-                        script.Replace(expr, getDtSet);
+                    if (retType.Contains("DataTable") || retType.Contains("DataSet"))
+                    {  
+                        DataTableSetExpression(expr, script, retType);
                     }
                     else
                     {
@@ -224,11 +246,9 @@ namespace DALOptimizer
                     var MtchExpr = VariableDeclarationStatement.Null;
                     string Output = "Output";
                     string sqlCmdVar = expr.FirstChild.FirstChild.FirstChild.GetText();
-                    var sqlParameterExpr = Pat.sqlParameter();
                     foreach (var varDeclStmt in expr.Parent.Descendants.OfType<VariableDeclarationStatement>())
                     {
-                        ICSharpCode.NRefactory.PatternMatching.Match sqlParameter = sqlParameterExpr.Match(varDeclStmt);
-                        if (sqlParameter.Success)
+                        if (Pat.sqlParameter().Match(varDeclStmt).Success)
                         {
                             MtchExpr = varDeclStmt;
                             break;
@@ -243,6 +263,7 @@ namespace DALOptimizer
                 }
             }
         }
+
         private void MethodDecl(DocumentScript script, CSharpFile file)
         {
             foreach (var expr in file.IndexOfMthdDecl)

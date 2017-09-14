@@ -55,7 +55,7 @@ namespace DALOptimizer
                 {
                     Target = new MemberReferenceExpression
                     {
-                        Target = new IdentifierExpression("conn"),
+                        Target = new IdentifierExpression(Pattern.AnyString),
                         MemberName = "Open"
                     }
                 }
@@ -206,7 +206,7 @@ namespace DALOptimizer
                         Target = new MemberReferenceExpression
                         {
                             Target = new IdentifierExpression("db"),
-                            MemberName = "ExecuteStoredProcedure"
+                            MemberName = "executeStoredProcedure"
                         },
                         Arguments = { new IdentifierExpression("cmd") }
                     }
@@ -300,36 +300,39 @@ namespace DALOptimizer
         }
 
         //db.GetDataTable(cmd);
-        public ExpressionStatement GetDtTbl(string str)
+        public ExpressionStatement GetDtTbl(string cmd, string dt)
         {
             var getDtTbl = new ExpressionStatement
             {
-                Expression = new InvocationExpression
-                {
-                    Target = new MemberReferenceExpression
+                Expression = new AssignmentExpression{
+                    Left = new IdentifierExpression(dt),
+                    Right = new InvocationExpression
                     {
-                        MemberName = "GetDataTable",
-                        Target = new IdentifierExpression("db")
-                    },
-                    Arguments = { new IdentifierExpression(str) },
+                        Target = new MemberReferenceExpression
+                        {
+                            MemberName = "getDataTable",
+                            Target = new IdentifierExpression("db")
+                        },
+                        Arguments = { new IdentifierExpression(cmd) },
+                    }
                 }
             };
             return getDtTbl;
         }
 
         //db.GetDataSet(cmd);
-        public ExpressionStatement GetDtSet(string str)
+        public ExpressionStatement GetDtSet(string cmd, string dt)
         {
-            var getDtSet = new ExpressionStatement
-            {
-                Expression = new InvocationExpression
-                {
-                    Target = new MemberReferenceExpression
-                    {
-                        MemberName = "GetDataSet",
-                        Target = new IdentifierExpression("db")
-                    },
-                    Arguments = { new IdentifierExpression(str) },
+            var getDtSet = new ExpressionStatement{
+                Expression = new AssignmentExpression{
+                    Left = new IdentifierExpression(dt),
+                    Right = new InvocationExpression{
+                        Target = new MemberReferenceExpression{
+                            MemberName = "getDataSet",
+                            Target = new IdentifierExpression("db")
+                        },
+                        Arguments = { new IdentifierExpression(cmd) },
+                    }
                 }
             };
             return getDtSet;
@@ -378,6 +381,24 @@ namespace DALOptimizer
                 }
             };
             return logErr;
+        }
+
+        //cmd.Connection = con;
+        public ExpressionStatement ConnectionStmt()
+        {
+            var connectionStmt = new ExpressionStatement
+            {
+                Expression = new AssignmentExpression
+                {
+                    Left = new MemberReferenceExpression
+                    {
+                        Target = new IdentifierExpression(Pattern.AnyString),
+                        MemberName = "Connection"
+                    },
+                    Right = new IdentifierExpression(Pattern.AnyString)
+                }
+            };
+            return connectionStmt;
         }
 
         //catch clause to Replace

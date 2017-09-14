@@ -36,14 +36,17 @@ namespace DALOptimizer
             {
                 if (Path.GetFileName(file.fileName) == "DatabaseProcessing.cs")
                        continue;
+
+//                if (Path.GetFileName(file.fileName) != "TicketDAL.cs")
+//                    continue;
                 var astResolver = new CSharpAstResolver(file.project.Compilation, file.syntaxTree, file.unresolvedTypeSystemForFile);
                 matchInvocation.CheckAllInvocation(file, astResolver);
             }
 
-            //PrintFunction pr = new PrintFunction();
-            //pr.PrintMethod(solution);
+            PrintFunction pr = new PrintFunction();
+            pr.PrintMethod(solution);
 
-            Console.Write("Apply refactorings?  Enter \"y\" for  yes    &   Press any key for \"no\":");
+            Console.Write("Apply refactorings?  Enter \"y\" for  yes    &   Enter any key for \"no\":");
             string answer = Console.ReadLine();
             if ("y".Equals(answer, StringComparison.OrdinalIgnoreCase))
             { 

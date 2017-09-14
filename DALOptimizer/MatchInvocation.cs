@@ -86,13 +86,14 @@ namespace DALOptimizer
         //Match Expression Statement  //da.Fill(dt);
         private void MatchExprStmt(AstNode invocation, CSharpFile file, CSharpAstResolver astResolver)
         {
-            ExpressionStatement[] expressionStatements = new ExpressionStatement[] { 
-                Pat.FillExpr(), Pat.logErr(), Pat.ExNonQuery(), Pat.StoredProc(), 
-                Pat.sqlConnstmt(), Pat.ConnOpenExprStmt(), Pat.ConnCloseExprStmt(), 
-                Pat.CmdDisposeExprStmt(), Pat.SqlDataAdapterExprStmt(), Pat.ExNonQuery1(), Pat.ConvertToInt32() };
+            Func<ExpressionStatement>[] expressionStatements = { 
+                Pat.FillExpr, Pat.logErr, Pat.ExNonQuery, Pat.StoredProc, 
+                Pat.sqlConnstmt, Pat.ConnOpenExprStmt, Pat.ConnCloseExprStmt, 
+                Pat.CmdDisposeExprStmt, Pat.SqlDataAdapterExprStmt, Pat.ExNonQuery1, 
+                Pat.ConvertToInt32, Pat.ConnectionStmt };
 
-            foreach (ExpressionStatement expressionStatement in expressionStatements) {
-                if (expressionStatement.Match(invocation).Success) {
+            foreach (var expressionStatement in expressionStatements) {
+                if (expressionStatement().Match(invocation).Success) {
                     file.IndexOfExprStmt.Add((ExpressionStatement)invocation);
                     break;
                 }
