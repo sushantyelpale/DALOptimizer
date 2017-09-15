@@ -37,7 +37,6 @@ namespace DALOptimizer
                 ExprStatement(script, file);
                 MethodDecl(script, file);
             }
-            
             return document;
         }
 
@@ -97,25 +96,40 @@ namespace DALOptimizer
                 if (Pat.sqlCmdstmt().Match(expr).Success)
                 {
                     // Removing Conn Object from SP statement
-                    int start = script.GetCurrentOffset(expr.LastChild.LastChild.PrevSibling.PrevSibling.StartLocation);
-                    int end = script.GetCurrentOffset(expr.LastChild.LastChild.PrevSibling.EndLocation);
-                    script.RemoveText(start, end - start);
+                    int startOffset = script.GetCurrentOffset(expr.LastChild.LastChild.PrevSibling.PrevSibling.StartLocation);
+                    int endOffset = script.GetCurrentOffset(expr.LastChild.LastChild.PrevSibling.EndLocation);
+                    script.RemoveText(startOffset, endOffset - startOffset);
 
                     //inserting "dbo." in SP variable
                     var SPName = expr.LastChild.FirstChild.NextSibling.NextSibling.NextSibling;
                     int curOffset = script.GetCurrentOffset(SPName.StartLocation);
                     if (!SPName.GetText().Contains("dbo.") && !SPName.GetText().Contains(" "))
                         script.InsertText(curOffset + 1, "dbo.");
+
+                    // inserting SqlCommand before first declaration for stored procedure in method
+                    CheckSqlCmdDecl(expr, script);
                 }
                 else if (Pat.sqlCmdstmt1().Match(expr).Success)
                 {
                     // inserting SqlCommand before first declaration for stored procedure in method
-                    int start = script.GetCurrentOffset(expr.StartLocation);
-                    script.InsertText(start, "SqlCommand ");
+                    CheckSqlCmdDecl(expr,script);
                 }
             }
-
         }
+
+        private void CheckSqlCmdDecl(AssignmentExpression expr, DocumentScript script)
+        {
+            AllPatterns Pat = new AllPatterns();
+            var SqlCmdStmtVarDecl = Pat.SqlCmdStmtVarDecl();
+            foreach (var expression in expr.Parent.Parent.Children.OfType<VariableDeclarationStatement>())
+            {
+                if (SqlCmdStmtVarDecl.Match(expression).Success)
+                    return;
+            }
+            int start = script.GetCurrentOffset(expr.StartLocation);
+            script.InsertText(start, "SqlCommand ");
+        }
+
         private void VarDeclarationStmt(DocumentScript script, CSharpFile file)
         {
             foreach (var expr in file.IndexOfVarDeclStmt)
@@ -178,12 +192,15 @@ namespace DALOptimizer
             if (MatchedExpression != ExpressionStatement.Null)
             {
                 string varName1 = MatchedExpression.LastChild.PrevSibling.LastChild.PrevSibling.GetText();
+
                 if (retType.Contains("DataTable"))
                 {
+                    InsertDtTblSetExpr(expr, script, "DataTable", varName1);
                     script.Replace(expr, Pat.GetDtTbl(varName, varName1));    
                 }
                 else if (retType.Contains("DataSet")) 
                 {
+                    //InsertDtTblSetExpr(expr, script, "DataSet");
                     script.Replace(expr, Pat.GetDtSet(varName, varName1));
                 }
             }
@@ -193,7 +210,29 @@ namespace DALOptimizer
             }
         }
 
+        private void InsertDtTblSetExpr(AstNode expr, DocumentScript script, string retType, string dtsVar)
+        {
+            AllPatterns Pat = new AllPatterns();
+            var dataTableSetExpr = Pat.DataTableSetExpr(retType, dtsVar);
+            var dataTableSetStmt = Pat.DataTableSetStmt(retType, dtsVar);
+            foreach (var expression in expr.GetParent<MethodDeclaration>().LastChild.Children.OfType<ExpressionStatement>())
+            {
+                if (dataTableSetExpr.Match(expression).Success)
+                {
+                    script.Replace(expression, dataTableSetStmt);
+                    return;
+                }
+            }
+            foreach (var expression in expr.GetParent<MethodDeclaration>().LastChild.Children.OfType<VariableDeclarationStatement>())
+            {
 
+                if (dataTableSetStmt.Match(expression).Success)
+                {
+                    return;
+                }
+            }
+            script.InsertBefore(expr.GetParent<MethodDeclaration>().LastChild.FirstChild.NextSibling, dataTableSetStmt);
+        }
 
         private void ExprStatement(DocumentScript script, CSharpFile file)
         {

@@ -37,8 +37,9 @@ namespace DALOptimizer
                 if (Path.GetFileName(file.fileName) == "DatabaseProcessing.cs")
                        continue;
 
-//                if (Path.GetFileName(file.fileName) != "TicketDAL.cs")
+//                if (Path.GetFileName(file.fileName) != "AddCustomerDAL.cs")
 //                    continue;
+
                 var astResolver = new CSharpAstResolver(file.project.Compilation, file.syntaxTree, file.unresolvedTypeSystemForFile);
                 matchInvocation.CheckAllInvocation(file, astResolver);
             }
@@ -60,10 +61,11 @@ namespace DALOptimizer
                         continue;
 
                     var document = matchExpr.CheckAllExpressions(file);
-                    File.WriteAllText(Path.ChangeExtension(file.fileName, ".output.cs"), document.Text);
-                    //File.WriteAllText(Path.ChangeExtension(file.fileName, ".cs"), document.Text);
+                    //File.WriteAllText(Path.ChangeExtension(file.fileName, ".output.cs"), document.Text);
+                    File.WriteAllText(Path.ChangeExtension(file.fileName, ".cs"), document.Text);
                 }
             }
+            Console.WriteLine("press any key to exit");
             Console.ReadKey();
         }
     }

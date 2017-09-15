@@ -97,8 +97,7 @@ namespace DALOptimizer
             return connectionClassconnectExpr;
         }
 
-        // Used for Assignment expressions
-        //Replaced by cmd = new SqlCommand("InsertTicket", con);
+        //cmd = new SqlCommand("InsertTicket", con);
         public AssignmentExpression sqlCmdstmt()
         {
             var sqlCmdstmt = new AssignmentExpression
@@ -116,7 +115,9 @@ namespace DALOptimizer
             return sqlCmdstmt;
         }
 
-        //Replaced by cmd = new SqlCommand("InsertTicket", con);  /argument of any type
+        //cmd = new SqlCommand();
+        //cmd = new SqlCommand("InsertTicket");
+        //cmd = new SqlCommand("InsertTicket", con);
         public AssignmentExpression sqlCmdstmt1()
         {
             var sqlCmdstmt1 = new AssignmentExpression
@@ -129,6 +130,22 @@ namespace DALOptimizer
                 }
             };
             return sqlCmdstmt1;
+        }
+
+        public VariableDeclarationStatement SqlCmdStmtVarDecl()
+        {
+            var sqlCmdStmtVarDecl = new VariableDeclarationStatement
+            {
+                Type = new SimpleType("SqlCommand"),
+                Variables = { 
+                    new VariableInitializer(
+                        Pattern.AnyString, 
+                        new ObjectCreateExpression{
+                            Type = new SimpleType("SqlCommand")
+                        }) 
+                     }
+            };
+            return sqlCmdStmtVarDecl;
         }
 
         // Pattern of variable Decl Stmt having sqlCommand having 2 arguments
@@ -503,6 +520,35 @@ namespace DALOptimizer
                 }
             };
             return sqlParameter;
+        }
+
+        public VariableDeclarationStatement DataTableSetStmt(string typeOfStmt, string dtsVar)
+        {
+            var stmt = new VariableDeclarationStatement
+            {
+                Type = new SimpleType(typeOfStmt),
+                Variables = { 
+                    new VariableInitializer(
+                        dtsVar,
+                        new ObjectCreateExpression(new SimpleType(typeOfStmt)))
+                }
+            };
+            return stmt;
+        }
+
+        public ExpressionStatement DataTableSetExpr(string typeOfStmt,string dtsVar)
+        {
+            var expr = new ExpressionStatement
+            {
+                Expression = new AssignmentExpression
+                {
+                    Left = new IdentifierExpression(dtsVar),
+                    Right = new ObjectCreateExpression {
+                        Type = new SimpleType(typeOfStmt)
+                    }
+                }
+            };
+            return expr;
         }
     }
 }
