@@ -260,6 +260,19 @@ namespace DALOptimizer
                     string objName = expr.FirstChild.LastChild.FirstChild.FirstChild.GetText();
                     var expr1 = Pat.ExeStrdProc(varName, objName);
                     script.Replace(expr, expr1);
+                    bool foundVarDecl = false;
+                    var parentMtdhDecl = expr.GetParent<MethodDeclaration>();
+                    foreach (var VarDeclInMethod in parentMtdhDecl.LastChild.Children.OfType<VariableDeclarationStatement>())
+                    {
+                        if (VarDeclInMethod.Variables.First().Name == varName)
+                        {
+                            foundVarDecl = true;
+                            break;
+                        }
+                    }
+                    if (foundVarDecl == false)
+                        script.InsertBefore(parentMtdhDecl.LastChild.FirstChild.NextSibling, Pat.varDeclMthd1(varName));
+
                     continue;
                 }
 

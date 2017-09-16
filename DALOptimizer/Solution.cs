@@ -38,17 +38,14 @@ namespace DALOptimizer
             else if (fileName.EndsWith(".sln"))
             {
                 var projectLinePattern = new Regex("Project\\(\"(?<TypeGuid>.*)\"\\)\\s+=\\s+\"(?<Title>.*)\",\\s*\"(?<Location>.*)\",\\s*\"(?<Guid>.*)\"");
-                foreach (string line in File.ReadLines(fileName))
-                {
+                foreach (string line in File.ReadLines(fileName)){
                     Match match = projectLinePattern.Match(line);
-                    if (match.Success)
-                    {
+                    if (match.Success){
                         string typeGuid = match.Groups["TypeGuid"].Value;
                         string title = match.Groups["Title"].Value;
                         string location = match.Groups["Location"].Value;
                         string guid = match.Groups["Guid"].Value;
-                        switch (typeGuid.ToUpperInvariant())
-                        {
+                        switch (typeGuid.ToUpperInvariant()){
                             case "{2150E333-8FDC-42A3-9474-1A3956D46DE8}": // Solution Folder
                                 // ignore folders
                                 break;
