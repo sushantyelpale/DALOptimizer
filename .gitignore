@@ -1,6 +1,6 @@
-DALOptimizer/bin/
-DALOptimizer/obj/
-DALOptimizer/Properties/
+**/bin/
+**/obj/
+**/Properties/
 DALOptimizer/app.config
 DALOptimizer/DALOpt.csproj
 DALOptimizer/DALOpt.csproj.user
