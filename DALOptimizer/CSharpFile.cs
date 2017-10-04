@@ -49,5 +49,6 @@ namespace DALOptimizer
         public List<CatchClause> IndexOfCtchClause = new List<CatchClause>();
         public List<MethodDeclaration> IndexOfMthdDecl = new List<MethodDeclaration>();
         public List<VariableDeclarationStatement> IndexOfVarDeclStmt = new List<VariableDeclarationStatement>();
+        public List<TypeDeclaration> IndexOfTypeDecl = new List<TypeDeclaration>();
     }
 }

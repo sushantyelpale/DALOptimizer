@@ -93,7 +93,7 @@
     <Compile Include="AllPatterns.cs" />
     <Compile Include="CSharpFile.cs" />
     <Compile Include="CSharpProject.cs" />
-    <Compile Include="MatchExpr.cs" />
+    <Compile Include="ModifyExpressions.cs" />
     <Compile Include="MatchInvocation.cs" />
     <Compile Include="PrintFunction.cs" />
     <Compile Include="Program.cs" />

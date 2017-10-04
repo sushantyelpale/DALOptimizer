@@ -31,3 +31,14 @@ D:\DALProject\DAL_Optimizer\DALOptimizer\bin\Debug\Mono.Cecil.dll
 D:\DALProject\DAL_Optimizer\DALOptimizer\bin\Debug\ICSharpCode.NRefactory.xml
 D:\DALProject\DAL_Optimizer\DALOptimizer\bin\Debug\ICSharpCode.NRefactory.CSharp.xml
 D:\DALProject\DAL_Optimizer\DALOptimizer\obj\Debug\DALOpt.csprojResolveAssemblyReference.cache
+D:\Projects\CSharpProjects\DAL_Optimizer\DALOptimizer\bin\Debug\DALOpt.exe.config
+D:\Projects\CSharpProjects\DAL_Optimizer\DALOptimizer\obj\Debug\DALOpt.exe
+D:\Projects\CSharpProjects\DAL_Optimizer\DALOptimizer\obj\Debug\DALOpt.pdb
+D:\Projects\CSharpProjects\DAL_Optimizer\DALOptimizer\obj\Debug\DALOpt.csprojResolveAssemblyReference.cache
+D:\Projects\CSharpProjects\DAL_Optimizer\DALOptimizer\bin\Debug\DALOpt.exe
+D:\Projects\CSharpProjects\DAL_Optimizer\DALOptimizer\bin\Debug\DALOpt.pdb
+D:\Projects\CSharpProjects\DAL_Optimizer\DALOptimizer\bin\Debug\ICSharpCode.NRefactory.CSharp.dll
+D:\Projects\CSharpProjects\DAL_Optimizer\DALOptimizer\bin\Debug\ICSharpCode.NRefactory.dll
+D:\Projects\CSharpProjects\DAL_Optimizer\DALOptimizer\bin\Debug\Mono.Cecil.dll
+D:\Projects\CSharpProjects\DAL_Optimizer\DALOptimizer\bin\Debug\ICSharpCode.NRefactory.xml
+D:\Projects\CSharpProjects\DAL_Optimizer\DALOptimizer\bin\Debug\ICSharpCode.NRefactory.CSharp.xml

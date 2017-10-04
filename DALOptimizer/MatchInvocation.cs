@@ -24,7 +24,7 @@ namespace DALOptimizer
         public const string METHODDECLARARION = "MethodDeclaration";
         public const string TYPEDECLARATION = "TypeDeclaration";
 
-        AllPatterns Pat = new AllPatterns();
+        AllPatterns allPatterns = new AllPatterns();
 
         public void CheckAllInvocation(CSharpFile file, CSharpAstResolver astResolver) 
         {
@@ -40,7 +40,8 @@ namespace DALOptimizer
                     case ASSIGNMENTEXPRESSION: MatchAssExpr(invocation, file, astResolver); break; 
                     case PROPERTYDECLARATION: MatchPropDecl(invocation, file, astResolver); break;
                     case BLOCKSTATEMENT: MatchBlock(invocation, file, astResolver); break;  // check all finaly blocks
-                    case METHODDECLARARION: MatchMethodDecl(invocation, file, astResolver); break; 
+                    case METHODDECLARARION: MatchMethodDecl(invocation, file, astResolver); break;
+                    case TYPEDECLARATION: MatchClassType(invocation, file, astResolver); break; 
                 }
             }
         }
@@ -50,6 +51,12 @@ namespace DALOptimizer
         {
             if (invocation.Parent.GetType().Name.ToString() == TYPEDECLARATION)
                 file.IndexOfFieldDecl.Add((FieldDeclaration)invocation);
+        }
+
+        private void MatchClassType(AstNode invocation, CSharpFile file, CSharpAstResolver astResolver)
+        {
+            if (invocation.GetType().Name.ToString() == TYPEDECLARATION)
+                file.IndexOfTypeDecl.Add((TypeDeclaration)invocation);
         }
 
         // For All Global Property Declarations
@@ -66,15 +73,15 @@ namespace DALOptimizer
 
         private void MatchAssExpr(AstNode invocation, CSharpFile file, CSharpAstResolver astResolver)
         {
-            if (Pat.sqlCmdstmt1().Match(invocation).Success)
+            if (allPatterns.SqlCmdStmtAnyNode().Match(invocation).Success)
                 file.IndexOfAssExpr.Add((AssignmentExpression)invocation);
         }
 
         private void MatchVarDeclStmt(AstNode invocation, CSharpFile file, CSharpAstResolver astResolver)
         {
-            if (Pat.sqlCmdstmt2().Match(invocation).Success || Pat.SqlDtAdptStmt().Match(invocation).Success)
+            if (allPatterns.SqlCmdstmtTwoArgs().Match(invocation).Success || allPatterns.SqlDtAdptStmt().Match(invocation).Success)
                 file.IndexOfVarDeclStmt.Add((VariableDeclarationStatement)invocation);
-            else if (Pat.varDeclMthd().Match(invocation).Success)
+            else if (allPatterns.varDeclMethodZero().Match(invocation).Success)
             {
                 if (invocation.Parent.GetType().Name == BLOCKSTATEMENT && invocation.Parent.Parent.GetType().Name == METHODDECLARARION)
                 {
@@ -87,10 +94,10 @@ namespace DALOptimizer
         private void MatchExprStmt(AstNode invocation, CSharpFile file, CSharpAstResolver astResolver)
         {
             Func<ExpressionStatement>[] expressionStatements = { 
-                Pat.FillExpr, Pat.logErr, Pat.ExNonQuery, Pat.StoredProc, 
-                Pat.sqlConnstmt, Pat.ConnOpenExprStmt, Pat.ConnCloseExprStmt, 
-                Pat.CmdDisposeExprStmt, Pat.SqlDataAdapterExprStmt, Pat.ExNonQuery1, 
-                Pat.ConvertToInt32, Pat.ConnectionStmt };
+                allPatterns.FillExpr, allPatterns.logErr, allPatterns.ExNonQueryVarAssignment, allPatterns.StoredProc, 
+                allPatterns.SqlConnStmt, allPatterns.ConnOpenExprStmt, allPatterns.ConnCloseExprStmt, 
+                allPatterns.CmdDisposeExprStmt, allPatterns.SqlDataAdapterExprStmt, allPatterns.ExNonQueryDecl, 
+                allPatterns.ConvertToInt32, allPatterns.ConnectionStmt };
 
             foreach (var expressionStatement in expressionStatements) {
                 if (expressionStatement().Match(invocation).Success) {

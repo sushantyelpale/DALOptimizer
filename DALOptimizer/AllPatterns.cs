@@ -98,7 +98,7 @@ namespace DALOptimizer
         }
 
         //cmd = new SqlCommand("InsertTicket", con);
-        public AssignmentExpression sqlCmdstmt()
+        public AssignmentExpression SqlCmdStmt()
         {
             var sqlCmdstmt = new AssignmentExpression
             {
@@ -118,7 +118,7 @@ namespace DALOptimizer
         //cmd = new SqlCommand();
         //cmd = new SqlCommand("InsertTicket");
         //cmd = new SqlCommand("InsertTicket", con);
-        public AssignmentExpression sqlCmdstmt1()
+        public AssignmentExpression SqlCmdStmtAnyNode()
         {
             var sqlCmdstmt1 = new AssignmentExpression
             {
@@ -150,9 +150,9 @@ namespace DALOptimizer
 
         // Pattern of variable Decl Stmt having sqlCommand having 2 arguments
         //Replaced by SqlCommand cmd = new SqlCommand("InsertTicket", con);  /argument of any type
-        public VariableDeclarationStatement sqlCmdstmt2()
+        public VariableDeclarationStatement SqlCmdstmtTwoArgs()
         {
-            var sqlCmdstmt2 = new VariableDeclarationStatement
+            var sqlCmdstmtTwoArgs = new VariableDeclarationStatement
             {
                 Type = new SimpleType("SqlCommand"),
                 Variables = { 
@@ -166,11 +166,11 @@ namespace DALOptimizer
                         })
                 }
             };
-            return sqlCmdstmt2;
+            return sqlCmdstmtTwoArgs;
         }
 
         //conn = new SqlConnection(constr);
-        public ExpressionStatement sqlConnstmt()
+        public ExpressionStatement SqlConnStmt()
         {
             var sqlConnstmt = new ExpressionStatement
             {
@@ -233,7 +233,7 @@ namespace DALOptimizer
         }
 
         //i = cmd.ExecuteNonQuery();
-        public ExpressionStatement ExNonQuery()
+        public ExpressionStatement ExNonQueryVarAssignment()
         {
             var exNonQuery = new ExpressionStatement
             {
@@ -255,7 +255,7 @@ namespace DALOptimizer
         }
 
         //cmd.ExecuteNonQuery();
-        public ExpressionStatement ExNonQuery1()
+        public ExpressionStatement ExNonQueryDecl()
         {
             var exNonQuery1 = new ExpressionStatement
             {
@@ -419,7 +419,7 @@ namespace DALOptimizer
         }
 
         //catch clause to Replace
-        public CatchClause ctchclause()
+        public CatchClause catchclause(string loggerClassName)
         {
             var ctchclause = new CatchClause
             {
@@ -430,7 +430,7 @@ namespace DALOptimizer
                         Expression = new InvocationExpression{
                             Target = new MemberReferenceExpression{
                                 Target = new ObjectCreateExpression { 
-                                    Type = new SimpleType("LoggerProcessing")
+                                    Type = new SimpleType(loggerClassName)
                                 },
                                 MemberName = "write"
                             },
@@ -443,7 +443,7 @@ namespace DALOptimizer
         }
 
         //finally Block
-        public BlockStatement FinalyBlck()
+        public BlockStatement FinalyBlock()
         {
             var finalyBlck = new BlockStatement
             {
@@ -465,7 +465,7 @@ namespace DALOptimizer
             return dbProcessing;
         }
 
-        public VariableDeclarationStatement varDeclMthd()
+        public VariableDeclarationStatement varDeclMethodZero()
         {
             var varDeclMthd = new VariableDeclarationStatement
             {
@@ -477,7 +477,7 @@ namespace DALOptimizer
             return varDeclMthd;
         }
 
-        public VariableDeclarationStatement varDeclMthd1(string str)
+        public VariableDeclarationStatement varDeclMethodMinusOne(string str)
         {
             var varDeclMthd1 = new VariableDeclarationStatement
             {

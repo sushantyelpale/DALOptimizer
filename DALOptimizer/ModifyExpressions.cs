@@ -13,9 +13,11 @@ using ICSharpCode.NRefactory.TypeSystem;
 
 namespace DALOptimizer
 {
-    class MatchExpr
+    class ModifyExpressions
     {
-        public StringBuilderDocument CheckAllExpressions(CSharpFile file)
+        AllPatterns allPatterns = new AllPatterns();
+
+        public StringBuilderDocument CheckAllExpressions(CSharpFile file, string loggerClassName)
         { 
             file.syntaxTree.Freeze();
             var compilation = file.project.Compilation;
@@ -30,8 +32,9 @@ namespace DALOptimizer
             {
                 GlobalFieldDeclaration(script, file);
                 GlobalPropertyDeclaraton(script, file);
-                BlockStat(script, file);
-                CatchClaus(script,file);
+                WriteDataBaseProcessingStatement(script, file);
+                FinallyBlockStatement(script, file);
+                CatchClause(script,file, loggerClassName);
                 AssignmentExpr(script, file);
                 VarDeclarationStmt(script, file);
                 ExprStatement(script, file);
@@ -47,10 +50,8 @@ namespace DALOptimizer
             {
                 var copy = (FieldDeclaration)expr.Clone();
 
-                AllPatterns pat = new AllPatterns();
-                var pattern = pat.ConnectionClassconnectExpr();
-                if (expr.GetText().Contains(pattern.GetText()))   // Replace ConnectionClass.connect() with DatabaseProcessing stmt
-                    script.Replace(expr, pat.DbProcessing());
+                if (expr.GetText().Contains(allPatterns.ConnectionClassconnectExpr().GetText()))   // Remove ConnectionClass.connect() expression
+                    script.Remove(expr, true);
                 else                                                // rest of all global declarations are removed
                     script.Remove(expr, true);
             }
@@ -63,27 +64,34 @@ namespace DALOptimizer
             foreach (PropertyDeclaration expr in file.IndexOfPropDecl)
             {
                 var copy = (PropertyDeclaration)expr.Clone();
-                AllPatterns pat = new AllPatterns();
-                var pattern = pat.ConnectionClassconnectExpr();
-                script.Remove(expr, true);
+                if (expr.Match(allPatterns.ConnectionClassconnectExpr()).Success)
+                    script.Remove(expr, true);
             }
         }
-        private void BlockStat(DocumentScript script, CSharpFile file)
+        private void WriteDataBaseProcessingStatement(DocumentScript script, CSharpFile file)
         {
-            foreach (var expr in file.IndexOfBlockStmt)
+            foreach (var expr in file.IndexOfTypeDecl)
+            {
+                var copy = (TypeDeclaration)expr.Clone();
+                var startInClass = expr.GetChildByRole(Roles.LBrace).NextSibling;
+                script.InsertBefore(startInClass, allPatterns.DbProcessing());
+            }
+        }
+
+        private void FinallyBlockStatement(DocumentScript script, CSharpFile file)
+        {
+            foreach (BlockStatement expr in file.IndexOfBlockStmt)
             {
                 var copy = (BlockStatement)expr.Clone();
-                AllPatterns Pat = new AllPatterns();
-                script.Replace(expr, Pat.FinalyBlck());
+                script.Replace(expr, allPatterns.FinalyBlock());
             }
         }
-        private void CatchClaus(DocumentScript script, CSharpFile file) 
+        private void CatchClause(DocumentScript script, CSharpFile file, string loggerClassName) 
         {
-            foreach (var expr in file.IndexOfCtchClause)
+            foreach (CatchClause expr in file.IndexOfCtchClause)
             {
                 var copy = (CatchClause)expr.Clone();
-                AllPatterns Pat = new AllPatterns();
-                script.Replace(expr, Pat.ctchclause());
+                script.Replace(expr, allPatterns.catchclause(loggerClassName));
             }
         }
 
@@ -92,8 +100,7 @@ namespace DALOptimizer
             foreach (var expr in file.IndexOfAssExpr)
             {
                 var copy = (AssignmentExpression)expr.Clone();
-                AllPatterns Pat = new AllPatterns();
-                if (Pat.sqlCmdstmt().Match(expr).Success)
+                if (allPatterns.SqlCmdStmt().Match(expr).Success)
                 {
                     // Removing Conn Object from SP statement
                     int startOffset = script.GetCurrentOffset(expr.LastChild.LastChild.PrevSibling.PrevSibling.StartLocation);
@@ -109,7 +116,7 @@ namespace DALOptimizer
                     // inserting SqlCommand before first declaration for stored procedure in method
                     CheckSqlCmdDecl(expr, script);
                 }
-                else if (Pat.sqlCmdstmt1().Match(expr).Success)
+                else if (allPatterns.SqlCmdStmtAnyNode().Match(expr).Success)
                 {
                     // inserting SqlCommand before first declaration for stored procedure in method
                     CheckSqlCmdDecl(expr,script);
@@ -119,8 +126,7 @@ namespace DALOptimizer
 
         private void CheckSqlCmdDecl(AssignmentExpression expr, DocumentScript script)
         {
-            AllPatterns Pat = new AllPatterns();
-            var SqlCmdStmtVarDecl = Pat.SqlCmdStmtVarDecl();
+            var SqlCmdStmtVarDecl = allPatterns.SqlCmdStmtVarDecl();
             foreach (var expression in expr.Parent.Parent.Children.OfType<VariableDeclarationStatement>())
             {
                 if (SqlCmdStmtVarDecl.Match(expression).Success)
@@ -135,16 +141,15 @@ namespace DALOptimizer
             foreach (var expr in file.IndexOfVarDeclStmt)
             {
                 var copy = (VariableDeclarationStatement)expr.Clone();
-                AllPatterns Pat = new AllPatterns();
                 
-                if (Pat.sqlCmdstmt2().Match(expr).Success)
+                if (allPatterns.SqlCmdstmtTwoArgs().Match(expr).Success)
                 {
                     var Tempvar = expr.FirstChild.NextSibling.LastChild.LastChild.PrevSibling;
                     int start = script.GetCurrentOffset(Tempvar.PrevSibling.StartLocation);
                     int end = script.GetCurrentOffset(Tempvar.EndLocation);
                     script.RemoveText(start, end - start);
                 }
-                else if (Pat.SqlDtAdptStmt().Match(expr).Success)
+                else if (allPatterns.SqlDtAdptStmt().Match(expr).Success)
                 {
                     string retType = expr.GetParent<MethodDeclaration>().ReturnType.GetText();
                     if (retType.Contains("DataTable") || retType.Contains("DataSet"))
@@ -160,24 +165,22 @@ namespace DALOptimizer
                         script.InsertText(startOffset, "DummyText");
                     }
                 }
-                else if (Pat.varDeclMthd().Match(expr).Success)
+                else if (allPatterns.varDeclMethodZero().Match(expr).Success)
                 {
                     if (expr.Parent.GetType().Name == "BlockStatement" &&
                         expr.Parent.Parent.GetType().Name == "MethodDeclaration")
                     {
                         var varName = expr.FirstChild.NextSibling.FirstChild.GetText();
-                        script.Replace(expr, Pat.varDeclMthd1(varName));
+                        script.Replace(expr, allPatterns.varDeclMethodMinusOne(varName));
                     }
                 }
             }
         }
 
-        
         private void DataTableSetExpression(AstNode expr, DocumentScript script, string retType)
         {
             string varName = expr.GetText().Split("()".ToCharArray())[1];
-            AllPatterns Pat = new AllPatterns();
-            ExpressionStatement fillExpr = Pat.FillExpr();
+            ExpressionStatement fillExpr = allPatterns.FillExpr();
 
             var MatchedExpression = ExpressionStatement.Null;
             foreach (ExpressionStatement expressionStatement in expr.Parent.Descendants.OfType<ExpressionStatement>())
@@ -196,12 +199,12 @@ namespace DALOptimizer
                 if (retType.Contains("DataTable"))
                 {
                     InsertDtTblSetExpr(expr, script, "DataTable", varName1);
-                    script.Replace(expr, Pat.GetDtTbl(varName, varName1));    
+                    script.Replace(expr, allPatterns.GetDtTbl(varName, varName1));    
                 }
                 else if (retType.Contains("DataSet")) 
                 {
                     //InsertDtTblSetExpr(expr, script, "DataSet");
-                    script.Replace(expr, Pat.GetDtSet(varName, varName1));
+                    script.Replace(expr, allPatterns.GetDtSet(varName, varName1));
                 }
             }
             else
@@ -212,9 +215,8 @@ namespace DALOptimizer
 
         private void InsertDtTblSetExpr(AstNode expr, DocumentScript script, string retType, string dtsVar)
         {
-            AllPatterns Pat = new AllPatterns();
-            var dataTableSetExpr = Pat.DataTableSetExpr(retType, dtsVar);
-            var dataTableSetStmt = Pat.DataTableSetStmt(retType, dtsVar);
+            var dataTableSetExpr = allPatterns.DataTableSetExpr(retType, dtsVar);
+            var dataTableSetStmt = allPatterns.DataTableSetStmt(retType, dtsVar);
             foreach (var expression in expr.GetParent<MethodDeclaration>().LastChild.Children.OfType<ExpressionStatement>())
             {
                 if (dataTableSetExpr.Match(expression).Success)
@@ -239,11 +241,11 @@ namespace DALOptimizer
             foreach (var expr in file.IndexOfExprStmt)
             {
                 var copy = (ExpressionStatement)expr.Clone();
-                AllPatterns Pat = new AllPatterns();
 
                 Func<ExpressionStatement>[] functions = {
-                    Pat.FillExpr, Pat.StoredProc, Pat.sqlConnstmt, Pat.ConnOpenExprStmt, 
-                    Pat.ConnCloseExprStmt, Pat.CmdDisposeExprStmt, Pat.ConvertToInt32, Pat.ConnectionStmt};
+                    allPatterns.FillExpr, allPatterns.StoredProc, allPatterns.SqlConnStmt, 
+                    allPatterns.ConnOpenExprStmt, allPatterns.ConnCloseExprStmt, 
+                    allPatterns.CmdDisposeExprStmt, allPatterns.ConvertToInt32, allPatterns.ConnectionStmt};
 
                 foreach (var function in functions)
                 {
@@ -254,11 +256,11 @@ namespace DALOptimizer
                     }
                 }
                 
-                if (Pat.ExNonQuery().Match(expr).Success)
+                if (allPatterns.ExNonQueryVarAssignment().Match(expr).Success)
                 {
                     string varName = expr.FirstChild.FirstChild.GetText();
                     string objName = expr.FirstChild.LastChild.FirstChild.FirstChild.GetText();
-                    var expr1 = Pat.ExeStrdProc(varName, objName);
+                    var expr1 = allPatterns.ExeStrdProc(varName, objName);
                     script.Replace(expr, expr1);
                     bool foundVarDecl = false;
                     var parentMtdhDecl = expr.GetParent<MethodDeclaration>();
@@ -271,12 +273,12 @@ namespace DALOptimizer
                         }
                     }
                     if (foundVarDecl == false)
-                        script.InsertBefore(parentMtdhDecl.LastChild.FirstChild.NextSibling, Pat.varDeclMthd1(varName));
+                        script.InsertBefore(parentMtdhDecl.LastChild.FirstChild.NextSibling, allPatterns.varDeclMethodMinusOne(varName));
 
                     continue;
                 }
 
-                if (Pat.SqlDataAdapterExprStmt().Match(expr).Success)
+                if (allPatterns.SqlDataAdapterExprStmt().Match(expr).Success)
                 {
                     string retType = expr.GetParent<MethodDeclaration>().ReturnType.GetText();
                     if (retType.Contains("DataTable") || retType.Contains("DataSet"))
@@ -293,14 +295,14 @@ namespace DALOptimizer
                     }
                     continue;
                 }
-                if (Pat.ExNonQuery1().Match(expr).Success)
+                if (allPatterns.ExNonQueryDecl().Match(expr).Success)
                 {
                     var MtchExpr = VariableDeclarationStatement.Null;
                     string Output = "Output";
                     string sqlCmdVar = expr.FirstChild.FirstChild.FirstChild.GetText();
                     foreach (var varDeclStmt in expr.Parent.Descendants.OfType<VariableDeclarationStatement>())
                     {
-                        if (Pat.sqlParameter().Match(varDeclStmt).Success)
+                        if (allPatterns.sqlParameter().Match(varDeclStmt).Success)
                         {
                             MtchExpr = varDeclStmt;
                             break;
@@ -309,7 +311,7 @@ namespace DALOptimizer
                     if (MtchExpr != VariableDeclarationStatement.Null)
                     {
                         Output = MtchExpr.FirstChild.NextSibling.FirstChild.GetText();
-                        script.Replace(expr, Pat.gtOtptParameter(sqlCmdVar, Output));
+                        script.Replace(expr, allPatterns.gtOtptParameter(sqlCmdVar, Output));
                     }
                     continue;
                 }

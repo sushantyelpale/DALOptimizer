@@ -29,7 +29,7 @@ namespace DALOptimizer
             solution.ChooseCSProjFile(fileName);
 
             MatchInvocation matchInvocation = new MatchInvocation();
-            MatchExpr matchExpr = new MatchExpr();
+            ModifyExpressions modifyExpressions = new ModifyExpressions();
 
             // Capture patterns & store it in respective lists of Node patterns
             foreach (var file in solution.AllFiles)
@@ -50,9 +50,13 @@ namespace DALOptimizer
             Console.Write("Apply refactorings?  Enter \"y\" for  yes    &   Enter any key for \"no\":");
             string answer = Console.ReadLine();
             if ("y".Equals(answer, StringComparison.OrdinalIgnoreCase))
-            { 
+            {
+                Console.WriteLine("Enter Logger Class Name: ");
+                string loggerClassName = Console.ReadLine();
+
                 foreach (var file in solution.AllFiles)
                 {
+
                     if (file.IndexOfFieldDecl.Count == 0 && file.IndexOfPropDecl.Count == 0 &&
                         file.IndexOfAssExpr.Count == 0 && file.IndexOfBlockStmt.Count == 0 &&
                         file.IndexOfCtchClause.Count == 0 && file.IndexOfExprStmt.Count == 0 &&
@@ -60,7 +64,7 @@ namespace DALOptimizer
                         file.IndexOfVarDeclStmt.Count == 0)
                         continue;
 
-                    var document = matchExpr.CheckAllExpressions(file);
+                    var document = modifyExpressions.CheckAllExpressions(file, loggerClassName);
                     //File.WriteAllText(Path.ChangeExtension(file.fileName, ".output.cs"), document.Text);
                     File.WriteAllText(Path.ChangeExtension(file.fileName, ".cs"), document.Text);
                 }
