@@ -1,6 +1,6 @@
-**/bin/
-**/obj/
-**/Properties/
+bin/
+obj/
+Properties/
 DALOptimizer/app.config
 DALOptimizer/DALOpt.csproj
 DALOptimizer/DALOpt.csproj.user

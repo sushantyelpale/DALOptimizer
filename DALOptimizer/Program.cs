@@ -34,6 +34,7 @@ namespace DALOptimizer
             // Capture patterns & store it in respective lists of Node patterns
             foreach (var file in solution.AllFiles)
             {
+                string filena = "hello";
                 if (Path.GetFileName(file.fileName) == "DatabaseProcessing.cs")
                        continue;
 
