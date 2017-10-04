@@ -1,0 +1,11 @@
+DALOptimizer/bin/
+DALOptimizer/obj/
+DALOptimizer/Properties/
+DALOptimizer/app.config
+DALOptimizer/DALOpt.csproj
+DALOptimizer/DALOpt.csproj.user
+DALOptimizer/packages.config
+packages/
+DALOptimizer.sln
+DALOptimizer.suo
+DALOptimizer.v11.suo
